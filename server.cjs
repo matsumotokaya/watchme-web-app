@@ -104,7 +104,7 @@ app.post('/api/users/:userId/create', async (req, res) => {
     
     res.json({ success: true, message: `ユーザーディレクトリを作成しました: ${userId}` });
   } catch (error) {
-    console.error('ディレクトリ作成エラー:', error);
+    console.log('ディレクトリ作成で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -126,8 +126,8 @@ app.get('/api/proxy/sed-summary/:userId/:date', async (req, res) => {
     const data = await apiResponse.json();
     res.json(data);
   } catch (error) {
-    console.error(`[PROXY] Error fetching SED Summary:`, error);
-    res.status(500).json({ error: 'Failed to fetch data from Vault API' });
+    console.log(`[PROXY] SED Summary取得で問題が発生:`, error);
+    res.status(500).json({ error: 'Vault APIからデータを取得できませんでした' });
   }
 });
 
@@ -149,8 +149,8 @@ app.get('/api/proxy/emotion-timeline/:userId/:date', async (req, res) => {
     const data = await apiResponse.json();
     res.json(data);
   } catch (error) {
-    console.error(`[PROXY] Error fetching Emotion Timeline:`, error);
-    res.status(500).json({ error: 'Failed to fetch data from Vault API' });
+    console.log(`[PROXY] Emotion Timeline取得で問題が発生:`, error);
+    res.status(500).json({ error: 'Vault APIからデータを取得できませんでした' });
   }
 });
 
@@ -199,7 +199,7 @@ app.post('/api/users/:userId/logs/:date/load-from-insights', async (req, res) =>
       console.log(`✅ emotion-timeline.json EC2から読み込み成功`);
       
     } catch (error) {
-      console.log(`❌ EC2からのemotion-timeline読み込み失敗:`, error.message);
+      console.log(`⚠️ EC2からのemotion-timeline取得なし:`, error.message);
       errors.push(`emotion-timeline (EC2): ${error.message}`);
     }
 
@@ -237,7 +237,7 @@ app.post('/api/users/:userId/logs/:date/load-from-insights', async (req, res) =>
       console.log(`✅ sed-summary/result.json EC2から読み込み成功`);
       
     } catch (error) {
-      console.log(`❌ EC2からのSEDサマリー読み込み失敗:`, error.message);
+      console.log(`⚠️ EC2からのSEDサマリー取得なし:`, error.message);
       errors.push(`sed-summary (EC2): ${error.message}`);
     }
     
@@ -245,7 +245,7 @@ app.post('/api/users/:userId/logs/:date/load-from-insights', async (req, res) =>
     if (loadedDataTypes.length === 0) {
       return res.status(404).json({ 
         success: false, 
-        error: `指定された日付（${date}）のデータが取得できませんでした`,
+        error: `指定された日付（${date}）のデータが見つかりませんでした`,
         ec2Url,
         errors
       });
@@ -265,7 +265,7 @@ app.post('/api/users/:userId/logs/:date/load-from-insights', async (req, res) =>
     console.log(`手動更新完了: ${userId}/${date}.json にデータを保存しました`);
     console.log(`読み込み成功: ${loadedDataTypes.join(', ')}`);
     if (errors.length > 0) {
-      console.log(`読み込みエラー: ${errors.join(', ')}`);
+      console.log(`データなし: ${errors.join(', ')}`);
     }
     
     res.json({ 
@@ -275,11 +275,11 @@ app.post('/api/users/:userId/logs/:date/load-from-insights', async (req, res) =>
       targetFile: `${userId}/${date}.json`,
       dataTypes: loadedDataTypes,
       dataSize: JSON.stringify(graphData).length,
-      warnings: errors.length > 0 ? `一部で問題が発生しました: ${errors.join(', ')}` : null
+      warnings: errors.length > 0 ? `一部のデータが利用できませんでした: ${errors.join(', ')}` : null
     });
     
   } catch (error) {
-    console.error('手動更新エラー:', error);
+    console.log('手動更新で問題が発生:', error);
     res.status(500).json({ 
       success: false, 
       error: error.message 
@@ -320,7 +320,7 @@ app.post('/api/users/:userId/logs/:date', async (req, res) => {
       dataTypes: Object.keys(allData).filter(key => key !== 'date')
     });
   } catch (error) {
-    console.error('データ一括保存エラー:', error);
+    console.log('データ一括保存で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -351,7 +351,7 @@ app.post('/api/users/:userId/logs/:date/:dataType', async (req, res) => {
         const fileContent = await fsPromises.readFile(filePath, 'utf8');
         existingData = JSON.parse(fileContent);
       } catch (error) {
-        console.error('既存ファイル読み込みエラー:', error);
+        console.log('既存ファイル読み込みで問題が発生:', error);
         existingData = {};
       }
     }
@@ -378,7 +378,7 @@ app.post('/api/users/:userId/logs/:date/:dataType', async (req, res) => {
     
     res.json({ success: true, message: `データを保存しました: ${userId}/${date}.json (${dataType})` });
   } catch (error) {
-    console.error('データ保存エラー:', error);
+    console.log('データ保存で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -401,7 +401,7 @@ app.get('/api/users/:userId/logs/:date/types', async (req, res) => {
     
     res.json({ success: true, dataTypes });
   } catch (error) {
-    console.error('データタイプ一覧取得エラー:', error);
+    console.log('データタイプ一覧取得で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -415,19 +415,19 @@ app.get('/api/users/:userId/logs/:date/:dataType', async (req, res) => {
     try {
       await fsPromises.access(filePath, fs.constants.F_OK);
     } catch (error) {
-      return res.status(404).json({ success: false, error: '指定されたログが見つかりません' });
+      return res.status(404).json({ success: false, error: '指定された日付のデータが見つかりません' });
     }
     
     const fileContent = await fsPromises.readFile(filePath, 'utf8');
     const allData = JSON.parse(fileContent);
     
     if (!allData[dataType]) {
-      return res.status(404).json({ success: false, error: `指定されたデータタイプ(${dataType})が見つかりません` });
+      return res.status(404).json({ success: false, error: `指定されたデータタイプ(${dataType})のデータが見つかりません` });
     }
     
     res.json({ success: true, data: allData[dataType] });
   } catch (error) {
-    console.error('データ取得エラー:', error);
+    console.log('データ取得で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -441,13 +441,13 @@ app.get('/api/users/:userId/logs/:date', async (req, res) => {
     try {
       await fsPromises.access(filePath, fs.constants.F_OK);
     } catch (error) {
-      return res.status(404).json({ success: false, error: '指定されたログが見つかりません' });
+      return res.status(404).json({ success: false, error: '指定された日付のデータが見つかりません' });
     }
     
     const data = await fsPromises.readFile(filePath, 'utf8');
     res.json({ success: true, data: JSON.parse(data) });
   } catch (error) {
-    console.error('データ取得エラー:', error);
+    console.log('データ取得で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -461,7 +461,7 @@ app.get('/api/users', async (req, res) => {
     const users = JSON.parse(fileContent);
     res.json({ success: true, users });
   } catch (error) {
-    console.error('ユーザー一覧取得エラー:', error);
+    console.log('ユーザー一覧取得で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -480,7 +480,7 @@ app.get('/api/users/:userId', async (req, res) => {
     
     res.json({ success: true, user });
   } catch (error) {
-    console.error('ユーザー取得エラー:', error);
+    console.log('ユーザー取得で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -550,7 +550,7 @@ app.post('/api/users', async (req, res) => {
     
     res.json({ success: true, user: newUser, message: 'ユーザーが作成されました' });
   } catch (error) {
-    console.error('ユーザー作成エラー:', error);
+    console.log('ユーザー作成で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -577,7 +577,7 @@ app.put('/api/users/:userId', async (req, res) => {
     
     res.json({ success: true, user: users[userIndex], message: 'ユーザー情報が更新されました' });
   } catch (error) {
-    console.error('ユーザー更新エラー:', error);
+    console.log('ユーザー更新で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -635,7 +635,7 @@ app.delete('/api/users/:userId', async (req, res) => {
       message: `ユーザー「${deletedUser.name}」が削除されました` 
     });
   } catch (error) {
-    console.error('ユーザー削除エラー:', error);
+    console.log('ユーザー削除で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -665,7 +665,7 @@ app.get('/api/users/:userId/notifications', async (req, res) => {
       res.json({ success: true, notifications: [] });
     }
   } catch (error) {
-    console.error('お知らせ取得エラー:', error);
+    console.log('お知らせ取得で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -717,7 +717,7 @@ app.post('/api/users/:userId/notifications', async (req, res) => {
     
     res.json({ success: true, notification: newNotification, message: 'お知らせを追加しました' });
   } catch (error) {
-    console.error('お知らせ追加エラー:', error);
+    console.log('お知らせ追加で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -753,7 +753,7 @@ app.put('/api/users/:userId/notifications/:notificationId', async (req, res) => 
     
     res.json({ success: true, notification: notifications[notificationIndex], message: '既読状態を更新しました' });
   } catch (error) {
-    console.error('お知らせ更新エラー:', error);
+    console.log('お知らせ更新で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -786,7 +786,7 @@ app.delete('/api/users/:userId/notifications/:notificationId', async (req, res) 
     
     res.json({ success: true, message: 'お知らせを削除しました' });
   } catch (error) {
-    console.error('お知らせ削除エラー:', error);
+    console.log('お知らせ削除で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -851,7 +851,7 @@ app.post('/api/notifications/broadcast', async (req, res) => {
         
         results.push({ userId: user.id, success: true });
       } catch (error) {
-        console.error(`ユーザー ${user.id} へのお知らせ送信エラー:`, error);
+        console.log(`ユーザー ${user.id} へのお知らせ送信で問題が発生:`, error);
         results.push({ userId: user.id, success: false, error: error.message });
       }
     }
@@ -863,7 +863,7 @@ app.post('/api/notifications/broadcast', async (req, res) => {
       results 
     });
   } catch (error) {
-    console.error('一括お知らせ送信エラー:', error);
+    console.log('一括お知らせ送信で問題が発生:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

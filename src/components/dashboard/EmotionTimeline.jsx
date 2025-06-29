@@ -95,7 +95,7 @@ const EmotionTimeline = ({ data: initialData, isLoading: initialLoading, userId,
       };
       
     } catch (error) {
-      console.error('❌ コンポーネント側データ検証エラー:', error);
+      console.log('⚠️ コンポーネント側データ検証で問題が発生:', error);
       return null;
     }
   };
@@ -140,7 +140,7 @@ const EmotionTimeline = ({ data: initialData, isLoading: initialLoading, userId,
             // データ欠損の場合の処理
             if (context.parsed.y === null || context.parsed.y === undefined || isNaN(context.parsed.y)) {
               return [
-                'データなし（測定中断）',
+                '測定なし',
                 '※ このポイントは分析から除外されています'
               ];
             }
@@ -230,7 +230,7 @@ const EmotionTimeline = ({ data: initialData, isLoading: initialLoading, userId,
         timeInterval: Math.round(timeInterval)
       };
     } catch (error) {
-      console.error('データ統計計算エラー:', error);
+      console.log('データ統計計算で問題が発生:', error);
       return null;
     }
   };
@@ -257,7 +257,7 @@ const EmotionTimeline = ({ data: initialData, isLoading: initialLoading, userId,
       return createChartDataObject(data.timePoints, data.emotionScores);
       
     } catch (error) {
-      console.error('❌ チャートデータ作成エラー:', error);
+      console.log('⚠️ チャートデータ作成で問題が発生:', error);
       return null;
     }
   };
@@ -391,12 +391,12 @@ const EmotionTimeline = ({ data: initialData, isLoading: initialLoading, userId,
       if (validatedData) {
         setData(validatedData);
       } else {
-        throw new Error('取得したデータの形式が無効です');
+        throw new Error('取得したデータの形式が予期しない形式です');
       }
       
     } catch (err) {
-      console.error('❌ プロキシ経由でのemotion-timelineデータ再取得エラー:', err);
-      setError(err.message || 'データの再取得に失敗しました');
+      console.log('⚠️ プロキシ経由でのemotion-timelineデータ取得時に問題が発生:', err);
+      setError(err.message || 'データの取得でタイムアウトまたは通信の問題が発生しました');
     } finally {
       setIsRefreshing(false);
     }
@@ -553,7 +553,7 @@ const EmotionTimeline = ({ data: initialData, isLoading: initialLoading, userId,
           )}
         </>
       ) : (
-        <NoDataMessage selectedDate={selectedDate} dataType="感情タイムラインデータ" />
+        <NoDataMessage selectedDate={selectedDate} dataType="心理グラフデータ" />
       )}
     </div>
   );

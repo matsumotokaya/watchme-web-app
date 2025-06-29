@@ -52,8 +52,8 @@ const EventLogs = ({ userId, selectedDate }) => {
       setSedData(data);
 
     } catch (err) {
-      console.error('❌ プロキシ経由でのSEDサマリーデータ再取得エラー:', err);
-      setError(err.message || 'データの再取得に失敗しました');
+      console.log('⚠️ プロキシ経由でのSEDサマリーデータ取得時に問題が発生:', err);
+      setError(err.message || 'データの取得でタイムアウトまたは通信の問題が発生しました');
     } finally {
       setIsRefreshing(false);
     }
@@ -90,8 +90,8 @@ const EventLogs = ({ userId, selectedDate }) => {
       console.log('✅ SEDサマリーデータ読み込み成功:', data);
       setSedData(data);
     } catch (err) {
-      console.error('❌ SEDサマリーデータ読み込みエラー:', err);
-      setError(err.message || 'データの読み込みに失敗しました');
+      console.log('⚠️ SEDサマリーデータ読み込み時に問題が発生:', err);
+      setError(err.message || 'データの読み込みでタイムアウトまたは通信の問題が発生しました');
       setSedData(null);
     } finally {
       setIsLoading(false);
@@ -134,7 +134,7 @@ const EventLogs = ({ userId, selectedDate }) => {
       <div className="bg-white rounded-2xl shadow-md p-6">
         <div className="text-center py-8">
           <div className="text-4xl mb-4">⚠️</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">データ読み込みエラー</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">データが利用できません</h3>
           <p className="text-sm text-gray-600 mb-4">{error}</p>
           <button
             onClick={fetchFromVaultAPI}

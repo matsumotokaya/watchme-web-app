@@ -28,8 +28,8 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
         setUser(userData);
         console.log('サーバーからユーザーデータを取得しました:', userData);
       } catch (error) {
-        console.error('ユーザーデータ取得エラー:', error);
-        // エラー時はデフォルト値を設定
+        console.log('ユーザーデータが利用できません:', error);
+        // データなし時はデフォルト値を設定
         setUser({
           id: userId,
           name: 'ユーザー情報なし',
@@ -37,7 +37,7 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
           age: 0,
           gender: '',
           organization: '',
-          notes: 'ユーザー情報を取得できませんでした',
+          notes: 'ユーザー情報がまだ登録されていません',
           profileImageUrl: '',
         });
       }
@@ -74,12 +74,12 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
   // 日付範囲一括更新ボタンのハンドラー
   const handleBulkUpdate = async () => {
     if (!startDate || !endDate) {
-      setUpdateStatus('❌ 開始日と終了日を指定してください');
+      setUpdateStatus('📅 開始日と終了日を指定してください');
       return;
     }
 
     if (new Date(startDate) > new Date(endDate)) {
-      setUpdateStatus('❌ 開始日は終了日より前の日付を指定してください');
+      setUpdateStatus('📅 開始日は終了日より前の日付を指定してください');
       return;
     }
 
@@ -129,7 +129,7 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
               error: result.error || 'サーバーエラー',
               status: response.status
             });
-            console.log(`❌ ${date}: 失敗 - ${result.error}`);
+            console.log(`⚠️ ${date}: データなし - ${result.error}`);
           }
           
         } catch (dateError) {
@@ -138,7 +138,7 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
             error: dateError.message,
             status: 'ネットワークエラー'
           });
-          console.error(`❌ ${date}: エラー -`, dateError);
+          console.log(`⚠️ ${date}: 通信問題 -`, dateError);
         }
         
         // 各リクエスト間に短い間隔を設ける（サーバー負荷軽減）
@@ -157,7 +157,7 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
       } else if (successCount > 0 && errorCount > 0) {
         finalMessage = `⚠️ 一部のデータ更新が完了しました (成功: ${successCount}, 失敗: ${errorCount})`;
       } else {
-        finalMessage = `❌ データ更新に失敗しました (${errorCount}/${totalDates})`;
+        finalMessage = `⚠️ データを取得できませんでした (${errorCount}/${totalDates})`;
       }
       
       setUpdateStatus(finalMessage);
@@ -173,8 +173,8 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
       }
       
     } catch (error) {
-      console.error('一括更新エラー:', error);
-      setUpdateStatus(`❌ 一括更新に失敗しました: ${error.message}`);
+      console.log('一括更新で問題が発生:', error);
+      setUpdateStatus(`⚠️ 一括更新で問題が発生しました: ${error.message}`);
     } finally {
       setIsUpdating(false);
       setUpdateProgress({ current: 0, total: 0 });
