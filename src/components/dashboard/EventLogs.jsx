@@ -128,28 +128,52 @@ const EventLogs = ({ userId, selectedDate }) => {
     );
   }
 
-  // エラー状態
-  if (error) {
+  // データがない場合（エラーがある場合も含む）
+  if (!sedData) {
     return (
-      <div className="bg-white rounded-2xl shadow-md p-6">
-        <div className="text-center py-8">
-          <div className="text-4xl mb-4">⚠️</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">データが利用できません</h3>
-          <p className="text-sm text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={fetchFromVaultAPI}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            Vault APIから再取得
-          </button>
+      <div className="bg-white rounded-2xl shadow-md p-4 md:p-6">
+        <div className="mb-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-800">行動グラフ</h2>
+            {/* グラフ更新ボタン */}
+            <button
+              onClick={fetchFromVaultAPI}
+              disabled={isRefreshing}
+              className={`flex items-center space-x-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                isRefreshing
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
+              }`}
+              title="Vault APIから最新データを再取得"
+            >
+              {isRefreshing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>更新中...</span>
+                </>
+              ) : (
+                <>
+                  <span>🔄</span>
+                  <span>更新</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* エラー表示 */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <span className="text-red-500">⚠️</span>
+              <span className="text-sm text-red-700">{error}</span>
+            </div>
+          </div>
+        )}
+
+        <NoDataMessage selectedDate={selectedDate} dataType="行動グラフデータ" />
       </div>
     );
-  }
-
-  // データがない場合
-  if (!sedData) {
-    return <NoDataMessage selectedDate={selectedDate} dataType="音響イベントデータ（SED）" />;
   }
 
   return (
