@@ -30,12 +30,28 @@ ChartJS.register(
   Filler
 );
 
-const EmotionTimeline = ({ userId, selectedDate }) => {
+const VibeGraph = ({ userId, selectedDate }) => {
   const { data, isLoading, isRefreshing, error, refresh } = useVaultAPI(
     'emotion-timeline',
     userId,
     selectedDate
   );
+
+  // エラーメッセージからHTTPステータスコードを抽出
+  const extractErrorCode = (errorMessage) => {
+    if (!errorMessage) return null;
+    
+    // "HTTP 404: Not Found" → "404"
+    const httpMatch = errorMessage.match(/HTTP (\d{3})/);
+    if (httpMatch) {
+      return httpMatch[1];
+    }
+    
+    // その他のエラーコードパターンがあれば追加
+    return null;
+  };
+
+  const errorCode = extractErrorCode(error);
 
   const [selectedInsight, setSelectedInsight] = useState(0);
 
@@ -115,16 +131,47 @@ const EmotionTimeline = ({ userId, selectedDate }) => {
     spanGaps: false, // nullの部分で線を途切れさせる
   };
 
-  // チャートデータの作成（簡素化）
+  // NaN値をnullに正規化するヘルパー関数
+  const normalizeScores = (scores) => {
+    if (!Array.isArray(scores)) return [];
+    
+    let nanCount = 0;
+    const normalized = scores.map((score, index) => {
+      // NaN値をnullに変換（防御的実装）
+      if (typeof score === 'number' && isNaN(score)) {
+        nanCount++;
+        console.log(`🔧 VibeGraph: NaN値をnullに変換 (インデックス: ${index})`);
+        return null;
+      }
+      // 文字列"NaN"もnullに変換
+      if (typeof score === 'string' && score.toLowerCase() === 'nan') {
+        nanCount++;
+        console.log(`🔧 VibeGraph: 文字列"NaN"をnullに変換 (インデックス: ${index})`);
+        return null;
+      }
+      return score;
+    });
+    
+    if (nanCount > 0) {
+      console.log(`✅ VibeGraph: ${nanCount}個のNaN値をnullに正規化しました`);
+    }
+    
+    return normalized;
+  };
+
+  // チャートデータの作成（NaN対応強化版）
   const createChartData = () => {
     if (!data || !data.timePoints || !data.emotionScores) return null;
+    
+    // emotionScoresのNaN値をnullに正規化
+    const normalizedScores = normalizeScores(data.emotionScores);
     
     return {
       labels: data.timePoints,
       datasets: [
         {
           label: '心理スコア',
-          data: data.emotionScores,
+          data: normalizedScores,
           borderColor: 'rgba(59, 130, 246, 1)',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           borderWidth: 2,
@@ -214,10 +261,15 @@ const EmotionTimeline = ({ userId, selectedDate }) => {
         </div>
       </div>
 
-      <ErrorDisplay error={error} />
-
       {isLoading ? (
         <LoadingSpinner />
+      ) : error ? (
+        // エラーがある場合は、NoDataMessageのみ表示（エラーコード付き）
+        <NoDataMessage 
+          selectedDate={selectedDate} 
+          dataType="心理グラフデータ" 
+          errorCode={errorCode}
+        />
       ) : data ? (
         <>
           <div className="h-64 md:h-80 relative">
@@ -261,4 +313,4 @@ const EmotionTimeline = ({ userId, selectedDate }) => {
   );
 };
 
-export default EmotionTimeline;
+export default VibeGraph;

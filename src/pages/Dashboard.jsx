@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useSearchParams } from 'react-router-dom';
 import SwipeableViews from 'react-swipeable-views';
 import MobileLayout from '../layouts/MobileLayout';
-import EmotionTimeline from '../components/dashboard/EmotionTimeline';
-import EventLogs from '../components/dashboard/EventLogs';
+import VibeGraph from '../components/dashboard/EmotionTimeline';
+import BehaviorGraph from '../components/dashboard/EventLogs';
 // import EmotionDistribution from '../components/dashboard/EmotionDistribution'; // 🗑️ 削除予定: 使用されていない感情分布コンポーネント
 import EmotionGraph from '../components/dashboard/EmotionGraph';
 import ProfileView from '../components/dashboard/ProfileView';
@@ -637,23 +637,23 @@ const Dashboard = () => {
           <div>
             <ErrorBoundary>
               {(() => {
-                console.log('レンダリング準備 - EmotionTimeline');
+                console.log('レンダリング準備 - VibeGraph');
                 console.log('emotionTimelineData:', emotionTimelineData);
                 console.log('isLoading:', isLoading);
                 console.log('currentUser.id:', currentUser.id);
                 
                 try {
                   return (
-                    <EmotionTimeline
+                    <VibeGraph
                       userId={currentUser.id}
                       selectedDate={selectedDate}
                     />
                   );
                 } catch (error) {
-                  console.error('EmotionTimelineコンポーネントでエラー:', error);
+                  console.error('VibeGraphコンポーネントでエラー:', error);
                   return (
                     <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <h3 className="text-red-800 font-semibold">EmotionTimelineエラー</h3>
+                      <h3 className="text-red-800 font-semibold">VibeGraphエラー</h3>
                       <p className="text-red-600 text-sm">{error.message}</p>
                       <pre className="text-xs text-red-500 mt-2">{error.stack}</pre>
                     </div>
@@ -667,23 +667,21 @@ const Dashboard = () => {
           <div>
             <ErrorBoundary>
               {(() => {
-                console.log('レンダリング準備 - EventLogs');
+                console.log('レンダリング準備 - BehaviorGraph');
                 console.log('eventLogsData:', eventLogsData);
                 
                 try {
                   return (
-                    <EventLogs
-                      data={eventLogsData}
-                      isLoading={isLoading}
+                    <BehaviorGraph
                       userId={currentUser.id}
                       selectedDate={selectedDate}
                     />
                   );
                 } catch (error) {
-                  console.error('EventLogsコンポーネントでエラー:', error);
+                  console.error('BehaviorGraphコンポーネントでエラー:', error);
                   return (
                     <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <h3 className="text-red-800 font-semibold">EventLogsエラー</h3>
+                      <h3 className="text-red-800 font-semibold">BehaviorGraphエラー</h3>
                       <p className="text-red-600 text-sm">{error.message}</p>
                     </div>
                   );

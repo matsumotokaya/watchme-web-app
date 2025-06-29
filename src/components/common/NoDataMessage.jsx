@@ -1,6 +1,6 @@
 import { formatDate } from '../../utils/dateUtils';
 
-const NoDataMessage = ({ selectedDate, dataType = 'データ' }) => {
+const NoDataMessage = ({ selectedDate, dataType = 'データ', errorCode = null }) => {
   return (
     <div className="h-64 flex flex-col items-center justify-center text-center p-4">
       <div className="text-gray-400 mb-2">
@@ -13,6 +13,13 @@ const NoDataMessage = ({ selectedDate, dataType = 'データ' }) => {
         {formatDate(selectedDate)}（{selectedDate}）の{dataType}は測定されていません。<br />
         この期間は計測機器が動作していなかった可能性があります。
       </p>
+      
+      {/* デバッグ情報：カスタマーサービス向け */}
+      {errorCode && (
+        <div className="mt-3 text-xs text-gray-400 opacity-75">
+          エラーコード: {errorCode}
+        </div>
+      )}
     </div>
   );
 };

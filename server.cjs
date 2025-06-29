@@ -143,14 +143,49 @@ app.get('/api/proxy/emotion-timeline/:userId/:date', async (req, res) => {
     const apiResponse = await fetch(targetUrl, {
       headers: { 'Accept': 'application/json', 'User-Agent': 'WatchMe-v8/1.0' }
     });
+    
     if (!apiResponse.ok) {
-      throw new Error(`API Error: ${apiResponse.status} ${apiResponse.statusText}`);
+      const errorText = await apiResponse.text();
+      console.log(`[PROXY] EC2 API Error ${apiResponse.status}:`, errorText);
+      
+      // EC2側のエラーレスポンスを解析
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.detail && errorData.detail.includes('nan')) {
+          res.status(500).json({ 
+            error: 'データ処理エラー: この日付のデータに無効な値（NaN）が含まれています。しばらく時間をおいてから再度お試しください。'
+          });
+          return;
+        }
+      } catch (parseError) {
+        // JSON解析に失敗した場合は通常のエラー処理
+      }
+      
+      if (apiResponse.status === 404) {
+        res.status(404).json({ error: 'この日付のデータは見つかりません' });
+      } else {
+        res.status(apiResponse.status).json({ 
+          error: `EC2 API Error: ${apiResponse.status} ${apiResponse.statusText}` 
+        });
+      }
+      return;
     }
+    
     const data = await apiResponse.json();
     res.json(data);
   } catch (error) {
     console.log(`[PROXY] Emotion Timeline取得で問題が発生:`, error);
-    res.status(500).json({ error: 'Vault APIからデータを取得できませんでした' });
+    
+    // ネットワークエラーの場合
+    if (error.message.includes('fetch')) {
+      res.status(503).json({ 
+        error: 'EC2 Vault APIとの通信でエラーが発生しました。ネットワーク接続を確認してください。' 
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'データ取得中に予期しないエラーが発生しました。' 
+      });
+    }
   }
 });
 

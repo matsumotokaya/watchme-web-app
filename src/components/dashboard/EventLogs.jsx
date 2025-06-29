@@ -6,13 +6,28 @@ import RefreshButton from '../common/RefreshButton';
 import ErrorDisplay from '../common/ErrorDisplay';
 import LoadingSpinner from '../common/LoadingSpinner';
 
-// SEDサマリーデータを表示するEventLogsコンポーネント（リファクタリング版）
-const EventLogs = ({ userId, selectedDate }) => {
+// SEDサマリーデータを表示するBehaviorGraphコンポーネント（リファクタリング版）
+const BehaviorGraph = ({ userId, selectedDate }) => {
   const { data: sedData, isLoading, isRefreshing, error, refresh } = useVaultAPI(
     'sed-summary',
     userId,
     selectedDate
   );
+
+  // エラーメッセージからHTTPステータスコードを抽出
+  const extractErrorCode = (errorMessage) => {
+    if (!errorMessage) return null;
+    
+    // "HTTP 404: Not Found" → "404"
+    const httpMatch = errorMessage.match(/HTTP (\d{3})/);
+    if (httpMatch) {
+      return httpMatch[1];
+    }
+    
+    return null;
+  };
+
+  const errorCode = extractErrorCode(error);
 
   // ローディング状態
   if (isLoading) {
@@ -53,8 +68,11 @@ const EventLogs = ({ userId, selectedDate }) => {
           </div>
         </div>
 
-        <ErrorDisplay error={error} />
-        <NoDataMessage selectedDate={selectedDate} dataType="行動グラフデータ" />
+        <NoDataMessage 
+          selectedDate={selectedDate} 
+          dataType="行動グラフデータ" 
+          errorCode={errorCode}
+        />
       </div>
     );
   }
@@ -87,9 +105,6 @@ const EventLogs = ({ userId, selectedDate }) => {
             />
           </div>
         </div>
-        
-        {/* エラー表示 */}
-        <ErrorDisplay error={error} />
         
         {/* 分析期間とサマリー */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -133,4 +148,4 @@ const EventLogs = ({ userId, selectedDate }) => {
   );
 };
 
-export default EventLogs;
+export default BehaviorGraph;
