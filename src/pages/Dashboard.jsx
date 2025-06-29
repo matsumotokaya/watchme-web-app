@@ -645,8 +645,6 @@ const Dashboard = () => {
                 try {
                   return (
                     <EmotionTimeline
-                      data={emotionTimelineData}
-                      isLoading={isLoading}
                       userId={currentUser.id}
                       selectedDate={selectedDate}
                     />

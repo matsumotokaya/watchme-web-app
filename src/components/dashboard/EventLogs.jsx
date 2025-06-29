@@ -1,107 +1,18 @@
-import { useState, useEffect } from 'react';
-import { getTodayString } from '../../utils/dateUtils';
+import useVaultAPI from '../../hooks/useVaultAPI';
 import EventRankingChart from './EventRankingChart';
 import TimeSlotEventTable from './TimeSlotEventTable';
 import NoDataMessage from '../common/NoDataMessage';
+import RefreshButton from '../common/RefreshButton';
+import ErrorDisplay from '../common/ErrorDisplay';
+import LoadingSpinner from '../common/LoadingSpinner';
 
-// SEDサマリーデータを表示するEventLogsコンポーネント
+// SEDサマリーデータを表示するEventLogsコンポーネント（リファクタリング版）
 const EventLogs = ({ userId, selectedDate }) => {
-  const [sedData, setSedData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Vault APIから直接データを取得する関数
-  const fetchFromVaultAPI = async () => {
-    if (!userId || !selectedDate) {
-      console.warn('ユーザーIDまたは選択日付が指定されていません:', { userId, selectedDate });
-      return;
-    }
-
-    setIsRefreshing(true);
-    setError(null);
-
-    try {
-      console.log('🔄 プロキシ経由でSEDサマリーデータを再取得中...');
-      console.log('📋 リクエスト詳細:', { userId, selectedDate });
-
-      const url = `/api/proxy/sed-summary/${userId}/${selectedDate}`;
-      console.log('🌐 リクエストURL (プロキシ):', url);
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
-
-      console.log('📡 レスポンス詳細:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      console.log('✅ プロキシ経由でSEDサマリーデータ再取得成功:', data);
-      setSedData(data);
-
-    } catch (err) {
-      console.log('⚠️ プロキシ経由でのSEDサマリーデータ取得時に問題が発生:', err);
-      setError(err.message || 'データの取得でタイムアウトまたは通信の問題が発生しました');
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  // データを読み込む関数
-  const loadSedSummaryData = async () => {
-    if (!userId || !selectedDate) {
-      console.warn('ユーザーIDまたは選択日付が指定されていません:', { userId, selectedDate });
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log('🔊 プロキシ経由でSEDサマリーデータを読み込み開始:', { userId, selectedDate });
-
-      const url = `/api/proxy/sed-summary/${userId}/${selectedDate}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      console.log('✅ SEDサマリーデータ読み込み成功:', data);
-      setSedData(data);
-    } catch (err) {
-      console.log('⚠️ SEDサマリーデータ読み込み時に問題が発生:', err);
-      setError(err.message || 'データの読み込みでタイムアウトまたは通信の問題が発生しました');
-      setSedData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 初期読み込みとデータ更新
-  useEffect(() => {
-    loadSedSummaryData();
-  }, [userId, selectedDate]);
+  const { data: sedData, isLoading, isRefreshing, error, refresh } = useVaultAPI(
+    'sed-summary',
+    userId,
+    selectedDate
+  );
 
   // ローディング状態
   if (isLoading) {
@@ -135,42 +46,14 @@ const EventLogs = ({ userId, selectedDate }) => {
         <div className="mb-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-800">行動グラフ</h2>
-            {/* グラフ更新ボタン */}
-            <button
-              onClick={fetchFromVaultAPI}
-              disabled={isRefreshing}
-              className={`flex items-center space-x-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                isRefreshing
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
-              }`}
-              title="Vault APIから最新データを再取得"
-            >
-              {isRefreshing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>更新中...</span>
-                </>
-              ) : (
-                <>
-                  <span>🔄</span>
-                  <span>更新</span>
-                </>
-              )}
-            </button>
+            <RefreshButton 
+              onClick={refresh} 
+              isRefreshing={isRefreshing}
+            />
           </div>
         </div>
 
-        {/* エラー表示 */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <span className="text-red-500">⚠️</span>
-              <span className="text-sm text-red-700">{error}</span>
-            </div>
-          </div>
-        )}
-
+        <ErrorDisplay error={error} />
         <NoDataMessage selectedDate={selectedDate} dataType="行動グラフデータ" />
       </div>
     );
@@ -198,31 +81,15 @@ const EventLogs = ({ userId, selectedDate }) => {
                 総イベント: {sedData.total_events?.toLocaleString() || 'N/A'}
               </div>
             </div>
-            {/* グラフ更新ボタン */}
-            <button
-              onClick={fetchFromVaultAPI}
-              disabled={isRefreshing}
-              className={`flex items-center space-x-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                isRefreshing
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
-              }`}
-              title="Vault APIから最新データを再取得"
-            >
-              {isRefreshing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>更新中...</span>
-                </>
-              ) : (
-                <>
-                  <span>🔄</span>
-                  <span>更新</span>
-                </>
-              )}
-            </button>
+            <RefreshButton 
+              onClick={refresh} 
+              isRefreshing={isRefreshing}
+            />
           </div>
         </div>
+        
+        {/* エラー表示 */}
+        <ErrorDisplay error={error} />
         
         {/* 分析期間とサマリー */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
