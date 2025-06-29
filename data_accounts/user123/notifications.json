@@ -1,0 +1,13 @@
+{
+  "notifications": [
+    {
+      "id": 1748443012404,
+      "type": "warning",
+      "priority": "urgent",
+      "message": "本日13:42、怒りの感情が通常よりも高く記録されました。深呼吸などで落ち着く時間を作ってみましょう。",
+      "timestamp": "2025-05-28T14:36:52.404Z",
+      "isRead": false,
+      "createdAt": "2025-05-28T14:36:52.404Z"
+    }
+  ]
+}

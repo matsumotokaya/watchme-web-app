@@ -1,0 +1,13 @@
+{
+  "notifications": [
+    {
+      "id": 1748442889387,
+      "type": "info",
+      "priority": "normal",
+      "message": "テストお知らせです！",
+      "timestamp": "2025-05-28T14:34:49.387Z",
+      "isRead": false,
+      "createdAt": "2025-05-28T14:34:49.387Z"
+    }
+  ]
+}
