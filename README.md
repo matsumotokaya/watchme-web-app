@@ -347,6 +347,58 @@ npm install
 
 詳細なデプロイ手順は [DEPLOY.md](DEPLOY.md) を参照してください。
 
+## 🌐 本番環境構成（デプロイ手順・稼働情報）
+
+### ✅ デプロイ先サーバー
+
+- **Amazon EC2 インスタンス**（Ubuntu）
+- **Elastic IP**: `3.24.16.82`
+- **ドメイン割当済み**：
+  - **https://dashboard.hey-watch.me**（Nginx + リバースプロキシ経由）
+  - Nginxがリクエストを内部の `localhost:3001` に転送
+
+---
+
+### ✅ アプリ起動方式
+
+- **Dockerは使用していません**（現時点では素のNode環境）
+- アプリは `/home/ubuntu/watchme-web-app` にクローン済み
+- `nvm` を使って **Node.js v22** 系を利用
+- 本番アプリは **systemd** を使って**常駐プロセスとして管理**
+
+---
+
+### ✅ systemd 管理情報
+
+- **ユニットファイルの場所**：
+  ```bash
+  /etc/systemd/system/watchme-web-app.service
+  ```
+
+- **実行コマンド（内部）**：
+  ```bash
+  ExecStart=/home/ubuntu/.nvm/versions/node/v22.17.0/bin/npm run start
+  ```
+
+- **自動起動設定済み**（サーバ再起動後も自動で復帰）
+
+- **状態確認・操作コマンド一覧**：
+  ```bash
+  # ステータス確認
+  sudo systemctl status watchme-web-app
+
+  # 停止
+  sudo systemctl stop watchme-web-app
+
+  # 再起動
+  sudo systemctl restart watchme-web-app
+
+  # ログ監視
+  sudo journalctl -u watchme-web-app -f
+  ```
+
+---
+
 ## 🐛 トラブルシューティング
 
 ### よくある問題
