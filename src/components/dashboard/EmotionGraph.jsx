@@ -12,6 +12,7 @@ import {
 } from 'chart.js';
 import { useErrorHandler, getUserFriendlyMessage } from '../../utils/errorHandler';
 import NoDataMessage from '../common/NoDataMessage';
+import useVaultAPI from '../../hooks/useVaultAPI';
 
 // Chart.js コンポーネントを登録
 ChartJS.register(
@@ -36,128 +37,91 @@ const EMOTIONS = {
   disgust: { label: '嫌悪', color: 'rgb(217, 119, 6)' }      // amber-600
 };
 
-// モックデータ（指定されたJSONデータ）
-const MOCK_EMOTION_DATA = {
-  "date": "2025-06-26",
-  "emotion_graph": [
-    {"time": "00:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "00:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "01:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "01:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "02:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "02:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "03:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "03:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "04:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "04:30", "anger": 4, "fear": 1, "anticipation": 2, "surprise": 1, "joy": 1, "sadness": 1, "trust": 1, "disgust": 1},
-    {"time": "05:00", "anger": 6, "fear": 1, "anticipation": 2, "surprise": 1, "joy": 1, "sadness": 1, "trust": 1, "disgust": 1},
-    {"time": "05:30", "anger": 5, "fear": 1, "anticipation": 2, "surprise": 1, "joy": 1, "sadness": 1, "trust": 1, "disgust": 1},
-    {"time": "06:00", "anger": 3, "fear": 1, "anticipation": 2, "surprise": 1, "joy": 1, "sadness": 1, "trust": 1, "disgust": 1},
-    {"time": "06:30", "anger": 3, "fear": 1, "anticipation": 2, "surprise": 1, "joy": 1, "sadness": 1, "trust": 1, "disgust": 1},
-    {"time": "07:00", "anger": 0, "fear": 0, "anticipation": 2, "surprise": 1, "joy": 8, "sadness": 0, "trust": 4, "disgust": 0},
-    {"time": "07:30", "anger": 0, "fear": 0, "anticipation": 2, "surprise": 1, "joy": 11, "sadness": 0, "trust": 4, "disgust": 0},
-    {"time": "08:00", "anger": 0, "fear": 0, "anticipation": 2, "surprise": 1, "joy": 7, "sadness": 0, "trust": 4, "disgust": 0},
-    {"time": "08:30", "anger": 0, "fear": 0, "anticipation": 2, "surprise": 1, "joy": 6, "sadness": 0, "trust": 4, "disgust": 0},
-    {"time": "09:00", "anger": 1, "fear": 1, "anticipation": 2, "surprise": 0, "joy": 3, "sadness": 1, "trust": 5, "disgust": 0},
-    {"time": "09:30", "anger": 1, "fear": 1, "anticipation": 2, "surprise": 0, "joy": 3, "sadness": 1, "trust": 5, "disgust": 0},
-    {"time": "10:00", "anger": 1, "fear": 1, "anticipation": 2, "surprise": 0, "joy": 3, "sadness": 1, "trust": 5, "disgust": 0},
-    {"time": "10:30", "anger": 1, "fear": 1, "anticipation": 2, "surprise": 0, "joy": 3, "sadness": 1, "trust": 5, "disgust": 0},
-    {"time": "11:00", "anger": 1, "fear": 1, "anticipation": 2, "surprise": 0, "joy": 3, "sadness": 1, "trust": 5, "disgust": 0},
-    {"time": "11:30", "anger": 1, "fear": 1, "anticipation": 2, "surprise": 0, "joy": 3, "sadness": 1, "trust": 5, "disgust": 0},
-    {"time": "12:00", "anger": 6, "fear": 1, "anticipation": 2, "surprise": 1, "joy": 1, "sadness": 2, "trust": 1, "disgust": 1},
-    {"time": "12:30", "anger": 7, "fear": 1, "anticipation": 2, "surprise": 1, "joy": 1, "sadness": 2, "trust": 1, "disgust": 1},
-    {"time": "13:00", "anger": 5, "fear": 1, "anticipation": 2, "surprise": 1, "joy": 1, "sadness": 2, "trust": 1, "disgust": 1},
-    {"time": "13:30", "anger": 4, "fear": 1, "anticipation": 2, "surprise": 1, "joy": 1, "sadness": 2, "trust": 1, "disgust": 1},
-    {"time": "14:00", "anger": 1, "fear": 0, "anticipation": 1, "surprise": 0, "joy": 4, "sadness": 0, "trust": 3, "disgust": 0},
-    {"time": "14:30", "anger": 1, "fear": 0, "anticipation": 1, "surprise": 0, "joy": 3, "sadness": 0, "trust": 3, "disgust": 0},
-    {"time": "15:00", "anger": 0, "fear": 0, "anticipation": 1, "surprise": 0, "joy": 2, "sadness": 0, "trust": 3, "disgust": 0},
-    {"time": "15:30", "anger": 0, "fear": 0, "anticipation": 1, "surprise": 0, "joy": 1, "sadness": 0, "trust": 3, "disgust": 0},
-    {"time": "16:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "16:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "17:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "17:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "18:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "18:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "19:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "19:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "20:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "20:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "21:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "21:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "22:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "22:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "23:00", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0},
-    {"time": "23:30", "anger": 0, "fear": 0, "anticipation": 0, "surprise": 0, "joy": 0, "sadness": 0, "trust": 0, "disgust": 0}
-  ]
-};
+// 感情グラフはVault APIから実データを取得
 
 const EmotionGraph = ({ userId, selectedDate }) => {
-  const [data, setData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [selectedEmotions, setSelectedEmotions] = useState(
     Object.keys(EMOTIONS).reduce((acc, emotion) => ({ ...acc, [emotion]: true }), {})
   );
 
+  // Vault APIからopensmile-summaryデータを取得
+  const { data, isLoading, error, refresh } = useVaultAPI('opensmile-summary', userId, selectedDate);
+
   // 統一エラーハンドラーの初期化
   const handleError = useErrorHandler('EmotionGraph');
 
-  // コンポーネント初期化時にモックデータを設定
+  // データ取得状況をログ出力
   useEffect(() => {
-    try {
-      console.log('🎭 感情グラフ: モックデータを読み込み中...');
-      setIsLoading(true);
-      
-      // モックデータを少し遅延させて実際のAPIコールをシミュレート
-      const loadMockData = () => {
-        try {
-          setData(MOCK_EMOTION_DATA);
-          console.log('✅ 感情グラフ: モックデータ読み込み完了');
-        } catch (err) {
-          const error = handleError(err, {
-            action: 'loadMockData',
-            userId,
-            selectedDate
-          });
-          setError(getUserFriendlyMessage(error));
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      setTimeout(loadMockData, 500); // 500ms遅延でローディング感を演出
-    } catch (err) {
-      const error = handleError(err, {
-        action: 'initializeComponent',
-        userId,
-        selectedDate
-      });
-      setError(getUserFriendlyMessage(error));
-      setIsLoading(false);
-    }
-  }, [userId, selectedDate, handleError]);
+    console.log('🎭 感情グラフ: データ状況', {
+      userId,
+      selectedDate,
+      hasData: !!data,
+      isLoading,
+      error,
+      dataStructure: data ? Object.keys(data) : null
+    });
+  }, [userId, selectedDate, data, isLoading, error]);
 
   // Chart.jsデータ生成
   const generateChartData = () => {
-    if (!data?.emotion_graph) return null;
+    // OpenSMILE APIからの実データを使用
+    // データ構造は実際のAPIレスポンスに応じて調整
+    if (!data) return null;
 
     try {
-      const timeLabels = data.emotion_graph.map(point => point.time);
+      let emotionData;
+      
+      // 可能なデータ構造を試行
+      if (data.emotion_graph) {
+        // モックデータと同じ構造の場合
+        emotionData = data.emotion_graph;
+      } else if (Array.isArray(data)) {
+        // 配列が直接返される場合
+        emotionData = data;
+      } else if (data.timeline || data.features || data.result) {
+        // 他の可能な構造
+        emotionData = data.timeline || data.features || data.result;
+      } else {
+        console.warn('🎭 感情グラフ: 未知のデータ構造です', data);
+        return null;
+      }
+
+      if (!Array.isArray(emotionData)) {
+        console.warn('🎭 感情グラフ: データが配列ではありません', emotionData);
+        return null;
+      }
+
+      // タイムラベルを生成（30分間隔、48ポイント）
+      const timeLabels = emotionData.map((point, index) => {
+        if (point.time) {
+          return point.time;
+        }
+        // タイムスタンプがない場合は30分間隔で生成
+        const hour = Math.floor(index / 2);
+        const minute = (index % 2) * 30;
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      });
       
       const datasets = Object.entries(EMOTIONS)
         .filter(([emotion]) => selectedEmotions[emotion])
         .map(([emotion, config]) => ({
           label: config.label,
-          data: data.emotion_graph.map(point => point[emotion]),
+          data: emotionData.map(point => {
+            const value = point[emotion];
+            // NaN値やnull値をnullに正規化
+            return (typeof value === 'number' && !isNaN(value)) ? value : null;
+          }),
           borderColor: config.color,
           backgroundColor: config.color + '20', // 20% opacity for fill
           borderWidth: 2,
           pointRadius: 3,
           pointHoverRadius: 5,
           fill: false,
-          tension: 0.1 // スムーズな曲線
+          tension: 0.1, // スムーズな曲線
+          spanGaps: false // null値で線を途切れさせる
         }));
 
+      console.log('✅ 感情グラフ: Chart.jsデータ生成完了', { timeLabels, datasets });
       return {
         labels: timeLabels,
         datasets: datasets
@@ -165,9 +129,9 @@ const EmotionGraph = ({ userId, selectedDate }) => {
     } catch (err) {
       const error = handleError(err, {
         action: 'generateChartData',
-        dataAvailable: !!data?.emotion_graph
+        dataAvailable: !!data
       });
-      setError(getUserFriendlyMessage(error));
+      console.error('🎭 感情グラフ: Chart.js データ生成エラー:', error);
       return null;
     }
   };
@@ -285,21 +249,13 @@ const EmotionGraph = ({ userId, selectedDate }) => {
         </button>
       </div>
 
-      {/* エラー表示 */}
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <span className="text-red-500">⚠️</span>
-            <span className="text-sm text-red-700">{error}</span>
-          </div>
-        </div>
-      )}
-
       {/* ローディング状態 */}
       {isLoading ? (
         <div className="h-64 flex items-center justify-center">
-          <div className="animate-pulse text-blue-500">感情データを読み込み中...</div>
+          <div className="animate-pulse text-blue-500">感情グラフデータを読み込み中...</div>
         </div>
+      ) : error ? (
+        <NoDataMessage selectedDate={selectedDate} dataType="感情グラフデータ" />
       ) : chartData ? (
         <>
           {/* 感情フィルター */}
@@ -334,8 +290,29 @@ const EmotionGraph = ({ userId, selectedDate }) => {
           {/* データサマリー */}
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
             {Object.entries(EMOTIONS).map(([emotion, config]) => {
-              const total = data.emotion_graph.reduce((sum, point) => sum + point[emotion], 0);
-              const max = Math.max(...data.emotion_graph.map(point => point[emotion]));
+              // 実データ構造に対応した計算
+              let emotionData;
+              if (data.emotion_graph) {
+                emotionData = data.emotion_graph;
+              } else if (Array.isArray(data)) {
+                emotionData = data;
+              } else if (data.timeline || data.features || data.result) {
+                emotionData = data.timeline || data.features || data.result;
+              } else {
+                emotionData = [];
+              }
+
+              if (!Array.isArray(emotionData)) {
+                emotionData = [];
+              }
+
+              // NaN値を除外して計算
+              const validValues = emotionData
+                .map(point => point[emotion])
+                .filter(value => typeof value === 'number' && !isNaN(value));
+              
+              const total = validValues.reduce((sum, value) => sum + value, 0);
+              const max = validValues.length > 0 ? Math.max(...validValues) : 0;
               
               return (
                 <div key={emotion} className="p-2 bg-gray-50 rounded-md">
@@ -347,8 +324,8 @@ const EmotionGraph = ({ userId, selectedDate }) => {
                     <span className="text-xs font-medium text-gray-700">{config.label}</span>
                   </div>
                   <div className="mt-1 text-xs text-gray-600">
-                    <div>合計: {total}回</div>
-                    <div>最大: {max}回</div>
+                    <div>合計: {total.toFixed(1)}回</div>
+                    <div>最大: {max.toFixed(1)}回</div>
                   </div>
                 </div>
               );

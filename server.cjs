@@ -24,7 +24,8 @@ const EC2_CONFIG = {
   BASE_URL: 'https://api.hey-watch.me',
   ENDPOINTS: {
     EMOTION_TIMELINE: '/api/users/{userId}/logs/{date}/emotion-timeline',
-    SED_SUMMARY: '/api/users/{userId}/logs/{date}/sed-summary'
+    SED_SUMMARY: '/api/users/{userId}/logs/{date}/sed-summary',
+    OPENSMILE_SUMMARY: '/api/users/{userId}/logs/{date}/opensmile-summary'
   },
   TIMEOUT: 10000 // 10秒
 };
@@ -184,6 +185,51 @@ app.get('/api/proxy/emotion-timeline/:userId/:date', async (req, res) => {
     } else {
       res.status(500).json({ 
         error: 'データ取得中に予期しないエラーが発生しました。' 
+      });
+    }
+  }
+});
+
+app.get('/api/proxy/opensmile-summary/:userId/:date', async (req, res) => {
+  const { userId, date } = req.params;
+  const timestamp = new Date().getTime();
+  const targetUrl = `${EC2_CONFIG.BASE_URL}${EC2_CONFIG.ENDPOINTS.OPENSMILE_SUMMARY
+    .replace('{userId}', userId)
+    .replace('{date}', date)}?t=${timestamp}`;
+  
+  console.log(`[PROXY] OpenSMILE Summary: ${targetUrl}`);
+  try {
+    const apiResponse = await fetch(targetUrl, {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'WatchMe-v8/1.0' }
+    });
+    
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      console.log(`[PROXY] EC2 API Error ${apiResponse.status}:`, errorText);
+      
+      if (apiResponse.status === 404) {
+        res.status(404).json({ error: 'この日付の感情グラフデータは見つかりません' });
+      } else {
+        res.status(apiResponse.status).json({ 
+          error: `EC2 API Error: ${apiResponse.status} ${apiResponse.statusText}` 
+        });
+      }
+      return;
+    }
+    
+    const data = await apiResponse.json();
+    res.json(data);
+  } catch (error) {
+    console.log(`[PROXY] OpenSMILE Summary取得で問題が発生:`, error);
+    
+    // ネットワークエラーの場合
+    if (error.message.includes('fetch')) {
+      res.status(503).json({ 
+        error: 'EC2 Vault APIとの通信でエラーが発生しました。ネットワーク接続を確認してください。' 
+      });
+    } else {
+      res.status(500).json({ 
+        error: '感情グラフデータ取得中に予期しないエラーが発生しました。' 
       });
     }
   }

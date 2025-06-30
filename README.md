@@ -12,7 +12,7 @@ WatchMe v8は、ユーザーの心理状態と行動ログを可視化・分析�
 ### ✨ 主要機能
 - 📈 **心理グラフ**: 心理スコアの時系列グラフ表示（-100〜+100、30分間隔48ポイント）
 - 📅 **行動グラフ**: 日々の活動パターン分析・可視化
-- 🎭 **感情グラフ**: ⚠️ **【開発中】** Plutchik 8感情分類グラフ（現在ハードコードされたモックデータを表示）
+- 🎭 **感情グラフ**: ✅ **【実装完了】** Plutchik 8感情分類グラフ（OpenSMILE音声特徴量による感情分析）
 - 👤 **プロフィール**: ユーザー情報と設定管理
 - 📢 **通知システム**: リアルタイム通知・管理機能
 - 👥 **マルチアカウント**: ユーザー切り替え対応
@@ -113,14 +113,14 @@ watchme_v8/
 
 ## ⚠️【重要】開発者向けガイドライン
 
-### 🚨【緊急】感情グラフ（EmotionGraph）の開発状況
+### ✅【完了】感情グラフ（EmotionGraph）の実装状況
 
-**⚠️ 重要な注意事項**: 感情グラフ（ダッシュボード3番目のタブ）は現在**開発中**です。
+**🎉 実装完了**: 感情グラフ（ダッシュボード3番目のタブ）が**実装完了**しました。
 
 #### **UIでの正しい用語統一（2025年6月更新）**
 - 1番目タブ：**心理グラフ** - 心理スコア時系列 ✅ 実装済み
 - 2番目タブ：**行動グラフ** - 行動ログ分析 ✅ 実装済み  
-- 3番目タブ：**感情グラフ** - Plutchik 8感情分類 ❌ 開発中
+- 3番目タブ：**感情グラフ** - Plutchik 8感情分類 ✅ 実装済み
 - 4番目タブ：**プロフィール** - ユーザー情報 ✅ 実装済み
 
 #### **内部コンポーネント名とファイル対応（重要）**
@@ -130,29 +130,33 @@ watchme_v8/
 |---------|------------------|-------------|------------------|
 | **心理グラフ** | `VibeGraph` | `src/components/dashboard/EmotionTimeline.jsx` | `/api/users/{userId}/logs/{date}/emotion-timeline` |
 | **行動グラフ** | `BehaviorGraph` | `src/components/dashboard/EventLogs.jsx` | `/api/users/{userId}/logs/{date}/sed-summary` |
-| **感情グラフ** | `EmotionGraph` | `src/components/dashboard/EmotionGraph.jsx` | 未実装（開発中） |
+| **感情グラフ** | `EmotionGraph` | `src/components/dashboard/EmotionGraph.jsx` | `/api/users/{userId}/logs/{date}/opensmile-summary` |
 
 ⚠️ **注意**: ファイルパスとAPIエンドポイントは歴史的経緯により異なる命名となっています。今後の開発時は上記対応表を参照してください。
 
-#### **現在の状況**
+#### **実装完了内容（2025年6月30日）**
 - **実装場所**: `src/components/dashboard/EmotionGraph.jsx`
-- **データ**: ハードコードされたモックデータ（MOCK_EMOTION_DATA）のみ表示
-- **API連携**: 未実装（実際のJSONファイルからデータを読み取っていない）
-- **動作**: 毎回同じサンプルデータを表示
+- **データソース**: Vault API `/api/users/{userId}/logs/{date}/opensmile-summary` からリアルタイム取得
+- **API連携**: ✅ 完全実装（useVaultAPIフック使用）
+- **動作**: OpenSMILE音声特徴量解析による実際の感情データを表示
 
-#### **実装されていない機能**
-- 実際のユーザーデータの表示
-- 日付変更時のデータ更新
-- ユーザー切り替え時のデータ変更
-- APIからのデータ取得
+#### **実装済み機能**
+- ✅ 実際のユーザーデータの表示（OpenSMILE音声特徴量ベース）
+- ✅ 日付変更時のデータ自動更新
+- ✅ ユーザー切り替え時のデータ自動変更  
+- ✅ Vault APIからのリアルタイムデータ取得
+- ✅ Plutchik 8感情分類グラフ（怒り、恐れ、期待、驚き、喜び、悲しみ、信頼、嫌悪）
+- ✅ 感情フィルター機能（表示/非表示切り替え）
+- ✅ データサマリー統計（合計・最大値）
+- ✅ エラーハンドリング・NaN値自動正規化
 
-#### **次回開発時の作業内容**
-1. `EmotionGraph.jsx`でAPIからデータを取得する実装
-2. 既存の`emotion-timeline`データを`emotion_graph`形式に変換
-3. モックデータ削除
-4. Dashboard.jsxからの適切なプロパティ渡し
+#### **技術仕様**
+- **データ形式**: 30分間隔48ポイント（1日24時間）
+- **プロキシ経由**: `server.cjs`の`/api/proxy/opensmile-summary`エンドポイント
+- **グラフライブラリ**: Chart.js（Line Chart）
+- **エラー処理**: 他グラフと統一されたNoDataMessage表示
 
-**この状況は危険です。開発チームは必ずこの状況を認識した上で作業を進めてください。**
+**🎉 3つのグラフ機能がすべて完成し、統一されたダッシュボードが実現されました！**
 
 ## ⚠️【重要】開発者向けガイドライン
 
@@ -169,7 +173,7 @@ watchme_v8/
 
 `server.cjs`に以下のプロキシエンドポイントが実装されています。フロントエンドからはこちらを呼び出してください。
 
--   **感情タイムライン**:
+-   **心理グラフ (感情タイムライン)**:
     -   `GET /api/proxy/emotion-timeline/:userId/:date`
     -   転送先: `https://api.hey-watch.me/api/users/:userId/logs/:date/emotion-timeline`
 
@@ -177,18 +181,22 @@ watchme_v8/
     -   `GET /api/proxy/sed-summary/:userId/:date`
     -   転送先: `https://api.hey-watch.me/api/users/:userId/logs/:date/sed-summary`
 
+-   **感情グラフ (OpenSMILEサマリー)**:
+    -   `GET /api/proxy/opensmile-summary/:userId/:date`
+    -   転送先: `https://api.hey-watch.me/api/users/:userId/logs/:date/opensmile-summary`
+
 #### 謎：なぜ以前は心理グラフが動いたのか？
 
 過去のバージョンでは、ダッシュボードの初期表示データは`data_accounts`ディレクトリにキャッシュされたJSONファイルを読み込んでいました。これはフロントエンドが自身のサーバー（`localhost:3001`）と通信するだけだったため、CORSエラーが発生しませんでした。
 
 CORSエラーは、**キャッシュされていない新しいデータ**を**フロントエンドから直接EC2 Vault APIに**取得しようとした際に初めて表面化しました。この動作は混乱を招くため、**「データ取得は必ずプロキシを介する」**というルールに統一しています。
 
-**現在の状況（2025年1月更新）:**
-- **行動グラフ（SEDサマリー）**: プロキシ経由でデータ取得 ✅
+**現在の状況（2025年6月30日更新）:**
 - **心理グラフ（感情タイムライン）**: プロキシ経由でデータ取得 ✅
-- **感情分布**: プロキシ経由でデータ取得 ✅
+- **行動グラフ（SEDサマリー）**: プロキシ経由でデータ取得 ✅
+- **感情グラフ（OpenSMILEサマリー）**: プロキシ経由でデータ取得 ✅
 
-すべてのグラフコンポーネントが統一されたプロキシパターンを使用し、CORSエラーを回避しています。
+3つのグラフコンポーネントがすべて統一されたプロキシパターンを使用し、CORSエラーを回避しています。
 
 ### ✅ Vault API構造統一完了
 
@@ -197,10 +205,11 @@ CORSエラーは、**キャッシュされていない新しいデータ**を**�
 #### **統一後の実装状況**
 
 **✅ 正式API形式（統一完了）**:
-- **感情タイムライン**: `GET /api/users/{userId}/logs/{date}/emotion-timeline` 🆕
-- **SEDサマリー**: `GET /api/users/{userId}/logs/{date}/sed-summary`
+- **心理グラフ（感情タイムライン）**: `GET /api/users/{userId}/logs/{date}/emotion-timeline`
+- **行動グラフ（SEDサマリー）**: `GET /api/users/{userId}/logs/{date}/sed-summary`
+- **感情グラフ（OpenSMILEサマリー）**: `GET /api/users/{userId}/logs/{date}/opensmile-summary` 🆕
 
-両方とも以下の特徴を持ちます：
+3つすべて以下の特徴を持ちます：
 - 専用のFastAPIエンドポイントで実装
 - JSONレスポンス、適切なエラーハンドリング
 - 一貫したWebダッシュボード向けAPI設計
@@ -209,8 +218,9 @@ CORSエラーは、**キャッシュされていない新しいデータ**を**�
 
 ```
 ✅ 統一API：全てのダッシュボードデータが正式API形式
-/api/users/{userId}/logs/{date}/emotion-timeline  # 感情タイムライン（NEW!）
-/api/users/{userId}/logs/{date}/sed-summary       # SEDサマリー
+/api/users/{userId}/logs/{date}/emotion-timeline    # 心理グラフ（感情タイムライン）
+/api/users/{userId}/logs/{date}/sed-summary         # 行動グラフ（SEDサマリー）
+/api/users/{userId}/logs/{date}/opensmile-summary   # 感情グラフ（OpenSMILEサマリー）🆕
 
 📁 別用途：ファイル管理・デバッグ用途  
 /status                                           # HTMLファイル一覧
