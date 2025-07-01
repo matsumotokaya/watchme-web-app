@@ -13,6 +13,10 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static('dist')); // Viteのビルドディレクトリを提供
 app.use('/product/dist', express.static('dist')); // プロダクション環境用のパス
 
+// アバター画像の静的配信（ローカル・本番共通）
+app.use('/avatars', express.static('public/avatars'));
+app.use('/product/dist/avatars', express.static('public/avatars'));
+
 // データルートディレクトリ
 const DATA_ROOT = path.join(__dirname, 'data_accounts');
 

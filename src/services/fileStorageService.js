@@ -6,12 +6,16 @@ const getApiBaseUrl = () => {
   if (import.meta.env.DEV) {
     const hostname = window.location.hostname;
     const apiUrl = `http://${hostname}:3001/api`;
-    console.log('API Base URL:', apiUrl);
+    console.log('API Base URL (Development):', apiUrl);
     return apiUrl;
   }
-  // 本番環境では現在のホスト名を使用
+  // 本番環境では現在のホスト名とポートを使用
   const hostname = window.location.hostname;
-  const apiUrl = `http://${hostname}:3001/api`;
+  const port = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+  const protocol = window.location.protocol;
+  
+  // 本番環境では通常HTTPSとポート3001を使用
+  const apiUrl = port === '3001' ? `${protocol}//${hostname}:3001/api` : `${protocol}//${hostname}:3001/api`;
   console.log('API Base URL (Production):', apiUrl);
   return apiUrl;
 };
