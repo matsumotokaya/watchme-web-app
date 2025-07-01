@@ -37,7 +37,7 @@ const EMOTIONS = {
   disgust: { label: '嫌悪', color: 'rgb(217, 119, 6)' }      // amber-600
 };
 
-// 感情グラフはVault APIから実データを取得
+// 感情グラフはVault API /api/users/{userId}/logs/{date}/opensmile-summary からデータを取得
 
 const EmotionGraph = ({ userId, selectedDate }) => {
   const [selectedEmotions, setSelectedEmotions] = useState(
@@ -64,22 +64,18 @@ const EmotionGraph = ({ userId, selectedDate }) => {
 
   // Chart.jsデータ生成
   const generateChartData = () => {
-    // OpenSMILE APIからの実データを使用
-    // データ構造は実際のAPIレスポンスに応じて調整
+    // Vault API /api/users/{userId}/logs/{date}/opensmile-summary からのデータを使用
     if (!data) return null;
 
     try {
       let emotionData;
       
-      // 可能なデータ構造を試行
+      // Vault APIからのデータ構造に対応
       if (data.emotion_graph) {
-        // モックデータと同じ構造の場合
         emotionData = data.emotion_graph;
       } else if (Array.isArray(data)) {
-        // 配列が直接返される場合
         emotionData = data;
       } else if (data.timeline || data.features || data.result) {
-        // 他の可能な構造
         emotionData = data.timeline || data.features || data.result;
       } else {
         console.warn('🎭 感情グラフ: 未知のデータ構造です', data);
@@ -290,7 +286,7 @@ const EmotionGraph = ({ userId, selectedDate }) => {
           {/* データサマリー */}
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
             {Object.entries(EMOTIONS).map(([emotion, config]) => {
-              // 実データ構造に対応した計算
+              // Vault APIデータ構造に対応した統計計算
               let emotionData;
               if (data.emotion_graph) {
                 emotionData = data.emotion_graph;
