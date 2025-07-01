@@ -4,16 +4,7 @@ import { getTodayString } from '../../utils/dateUtils';
 import Avatar from '../common/Avatar';
 
 const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
-  const [user, setUser] = useState({
-    id: '',
-    name: '',
-    birthDate: '',
-    age: 0,
-    gender: '',
-    organization: '',
-    notes: '',
-    profileImageUrl: '',
-  });
+  const [user, setUser] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -26,24 +17,14 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
       
       console.log('ProfileView: ユーザーデータ読み込み開始:', userId);
       
-      // ユーザー切り替え時に状態を完全リセット
-      setUser({
-        id: '',
-        name: '',
-        birthDate: '',
-        age: 0,
-        gender: '',
-        organization: '',
-        notes: '',
-        profileImageUrl: '',
-      });
+      // 更新状態のみリセット（プロフィール情報は読み込み完了まで維持）
       setUpdateStatus('');
       setIsUpdating(false);
       
       try {
         const userData = await getUser(userId);
-        setUser(userData);
         console.log('ProfileView: ユーザーデータ取得成功:', userData);
+        setUser(userData);
       } catch (error) {
         console.log('ProfileView: ユーザーデータ取得失敗:', error);
         // データなし時はデフォルト値を設定
@@ -203,7 +184,7 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <div className="py-6 flex flex-col items-center justify-center">
         <div className="animate-pulse h-32 w-32 rounded-full bg-gray-200 mb-4"></div>
@@ -218,14 +199,14 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
       <div className="p-6">
         <div className="flex flex-col items-center mb-6">
           <Avatar
-            src={user.profileImageUrl}
-            name={user.name}
+            src={user?.profileImageUrl}
+            name={user?.name || 'ユーザー'}
             size="large"
-            alt={user.name}
+            alt={user?.name || 'ユーザー'}
             className="border-4 border-blue-100"
           />
-          <h2 className="mt-4 text-xl font-semibold text-gray-800">{user.name}</h2>
-          <p className="text-sm text-gray-500">{user.id}</p>
+          <h2 className="mt-4 text-xl font-semibold text-gray-800">{user?.name || 'ユーザー情報なし'}</h2>
+          <p className="text-sm text-gray-500">{user?.id || ''}</p>
         </div>
 
         <div className="space-y-4">
@@ -233,27 +214,27 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-xs text-gray-500">生年月日</p>
-                <p className="text-sm font-medium">{user.birthDate || '未設定'}</p>
+                <p className="text-sm font-medium">{user?.birthDate || '未設定'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">年齢</p>
-                <p className="text-sm font-medium">{user.age} 歳</p>
+                <p className="text-sm font-medium">{user?.age || 0} 歳</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">性別</p>
-                <p className="text-sm font-medium">{user.gender || '未設定'}</p>
+                <p className="text-sm font-medium">{user?.gender || '未設定'}</p>
               </div>
             </div>
           </div>
 
           <div className="border-t border-gray-200 pt-4">
             <p className="text-xs text-gray-500">所属</p>
-            <p className="text-sm font-medium">{user.organization || '未設定'}</p>
+            <p className="text-sm font-medium">{user?.organization || '未設定'}</p>
           </div>
 
           <div className="border-t border-gray-200 pt-4">
             <p className="text-xs text-gray-500">認知・性格特記欄</p>
-            <p className="text-sm whitespace-pre-wrap">{user.notes || '情報がありません'}</p>
+            <p className="text-sm whitespace-pre-wrap">{user?.notes || '情報がありません'}</p>
           </div>
 
           {/* 日付範囲一括更新機能 */}
@@ -385,7 +366,7 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
               )}
               
               <p className="text-xs text-yellow-600 mt-2">
-                ※ EC2 (https://api.hey-watch.me/status/{user.id}/YYYY-MM-DD/) から各日付のデータを順次読み込み
+                ※ EC2 (https://api.hey-watch.me/status/{user?.id || 'USER_ID'}/YYYY-MM-DD/) から各日付のデータを順次読み込み
               </p>
             </div>
           </div>
