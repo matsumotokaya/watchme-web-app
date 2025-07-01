@@ -9,6 +9,7 @@ import EmotionGraph from '../components/dashboard/EmotionGraph';
 import ProfileView from '../components/dashboard/ProfileView';
 import DateNavigation from '../components/common/DateNavigation';
 import ErrorBoundary from '../components/ErrorBoundary';
+import Avatar from '../components/common/Avatar';
 import { 
   getAllUsers, 
   getEmotionTimelineData, 
@@ -366,10 +367,20 @@ const Dashboard = () => {
     }
   }, []);
   
-  // アカウント切り替えハンドラー
+  // アカウント切り替えハンドラー（状態管理を強化）
   const handleUserChange = (user) => {
+    console.log('アカウント切り替え開始:', { from: currentUser?.id, to: user.id });
+    
+    // 状態を完全にリセット
+    setEmotionTimelineData(null);
+    setEventLogsData(null);
+    setIsLoading(true);
+    
+    // 新しいユーザーを設定
     setCurrentUser(user);
     setShowUserSelector(false);
+    
+    console.log('アカウント切り替え完了:', user.id);
   };
 
   // 日付変更ハンドラー
@@ -514,23 +525,12 @@ const Dashboard = () => {
         className="flex items-center cursor-pointer"
         onClick={() => setShowUserSelector(!showUserSelector)}
       >
-        {currentUser.profileImageUrl ? (
-          <img
-            src={currentUser.profileImageUrl}
-            alt={currentUser.name}
-            className="h-8 w-8 rounded-full object-cover"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
-            }}
-          />
-        ) : null}
-        <div 
-          className="h-8 w-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold"
-          style={{ display: currentUser.profileImageUrl ? 'none' : 'flex' }}
-        >
-          {currentUser.name.charAt(0)}
-        </div>
+        <Avatar
+          src={currentUser.profileImageUrl}
+          name={currentUser.name}
+          size="small"
+          alt={currentUser.name}
+        />
         <div className="ml-2">
           <p className="text-sm font-medium text-gray-800">{currentUser.name}</p>
           <p className="text-xs text-gray-500">
@@ -574,23 +574,13 @@ const Dashboard = () => {
                     user.id === currentUser.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
                   }`}
                 >
-                  {user.profileImageUrl ? (
-                    <img
-                      src={user.profileImageUrl}
-                      alt={user.name}
-                      className="h-8 w-8 rounded-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
-                  ) : null}
-                  <div 
-                    className="h-8 w-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold"
-                    style={{ display: user.profileImageUrl ? 'none' : 'flex' }}
-                  >
-                    {user.name.charAt(0)}
-                  </div>
+                  <Avatar
+                    src={user.profileImageUrl}
+                    name={user.name}
+                    size="small"
+                    alt={user.name}
+                    fallbackColor={user.id === currentUser.id ? 'bg-blue-500' : 'bg-gray-500'}
+                  />
                   <div className="ml-3 flex-1">
                     <div className="flex items-center">
                       <p className={`text-sm font-medium ${

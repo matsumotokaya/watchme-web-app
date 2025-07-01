@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getUser } from '../../services/dataService';
 import { getTodayString } from '../../utils/dateUtils';
+import Avatar from '../common/Avatar';
 
 const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
   const [user, setUser] = useState({
@@ -23,12 +24,28 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
     const loadUserData = async () => {
       if (!userId) return;
       
+      console.log('ProfileView: ユーザーデータ読み込み開始:', userId);
+      
+      // ユーザー切り替え時に状態を完全リセット
+      setUser({
+        id: '',
+        name: '',
+        birthDate: '',
+        age: 0,
+        gender: '',
+        organization: '',
+        notes: '',
+        profileImageUrl: '',
+      });
+      setUpdateStatus('');
+      setIsUpdating(false);
+      
       try {
         const userData = await getUser(userId);
         setUser(userData);
-        console.log('サーバーからユーザーデータを取得しました:', userData);
+        console.log('ProfileView: ユーザーデータ取得成功:', userData);
       } catch (error) {
-        console.log('ユーザーデータが利用できません:', error);
+        console.log('ProfileView: ユーザーデータ取得失敗:', error);
         // データなし時はデフォルト値を設定
         setUser({
           id: userId,
@@ -200,23 +217,13 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="p-6">
         <div className="flex flex-col items-center mb-6">
-          {user.profileImageUrl ? (
-            <img
-              src={user.profileImageUrl}
-              alt={user.name}
-              className="h-32 w-32 rounded-full object-cover border-4 border-blue-100"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
-            />
-          ) : null}
-          <div 
-            className="h-32 w-32 rounded-full bg-blue-500 flex items-center justify-center text-white text-4xl font-medium"
-            style={{ display: user.profileImageUrl ? 'none' : 'flex' }}
-          >
-            {user.name ? user.name.charAt(0) : '?'}
-          </div>
+          <Avatar
+            src={user.profileImageUrl}
+            name={user.name}
+            size="large"
+            alt={user.name}
+            className="border-4 border-blue-100"
+          />
           <h2 className="mt-4 text-xl font-semibold text-gray-800">{user.name}</h2>
           <p className="text-sm text-gray-500">{user.id}</p>
         </div>
