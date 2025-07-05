@@ -15,6 +15,7 @@
     "build-and-start": "npm run build && npm run start"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.50.3",
     "chart.js": "^4.4.9",
     "chartjs-plugin-datalabels": "^2.2.0",
     "cors": "^2.8.5",
