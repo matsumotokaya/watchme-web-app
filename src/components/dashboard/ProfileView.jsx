@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { getUser } from '../../services/dataService';
 import { getTodayString } from '../../utils/dateUtils';
+import { useAuth } from '../../hooks/useAuth.jsx';
+import { getUserDevices } from '../../services/userService';
 import Avatar from '../common/Avatar';
 
-const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
-  const [user, setUser] = useState(null);
+const ProfileView = ({ onDataUpdate }) => {
+  const { user, userProfile } = useAuth();
+  const [devices, setDevices] = useState([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -12,37 +14,23 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
   const [updateProgress, setUpdateProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
-    const loadUserData = async () => {
-      if (!userId) return;
+    const loadUserDevices = async () => {
+      if (!user?.id) return;
       
-      console.log('ProfileView: ユーザーデータ読み込み開始:', userId);
-      
-      // 更新状態のみリセット（プロフィール情報は読み込み完了まで維持）
-      setUpdateStatus('');
-      setIsUpdating(false);
+      console.log('ProfileView: ユーザーデバイス読み込み開始:', user.id);
       
       try {
-        const userData = await getUser(userId);
-        console.log('ProfileView: ユーザーデータ取得成功:', userData);
-        setUser(userData);
+        const userDevices = await getUserDevices(user.id);
+        console.log('ProfileView: デバイス取得成功:', userDevices);
+        setDevices(userDevices);
       } catch (error) {
-        console.log('ProfileView: ユーザーデータ取得失敗:', error);
-        // データなし時はデフォルト値を設定
-        setUser({
-          id: userId,
-          name: 'ユーザー情報なし',
-          birthDate: '',
-          age: 0,
-          gender: '',
-          organization: '',
-          notes: 'ユーザー情報がまだ登録されていません',
-          profileImageUrl: '',
-        });
+        console.log('ProfileView: デバイス取得失敗:', error);
+        setDevices([]);
       }
     };
 
-    loadUserData();
-  }, [userId]);
+    loadUserDevices();
+  }, [user]);
 
   // 初期化: デフォルトの日付範囲を設定
   useEffect(() => {
@@ -184,7 +172,7 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
     }
   };
 
-  if (isLoading || !user) {
+  if (!user) {
     return (
       <div className="py-6 flex flex-col items-center justify-center">
         <div className="animate-pulse h-32 w-32 rounded-full bg-gray-200 mb-4"></div>
@@ -199,42 +187,77 @@ const ProfileView = ({ userId, isLoading, onDataUpdate }) => {
       <div className="p-6">
         <div className="flex flex-col items-center mb-6">
           <Avatar
-            src={user?.profileImageUrl}
-            name={user?.name || 'ユーザー'}
+            src={userProfile?.profile_image_url}
+            name={userProfile?.name || user?.email}
             size="large"
-            alt={user?.name || 'ユーザー'}
+            alt={userProfile?.name || user?.email}
             className="border-4 border-blue-100"
           />
-          <h2 className="mt-4 text-xl font-semibold text-gray-800">{user?.name || 'ユーザー情報なし'}</h2>
-          <p className="text-sm text-gray-500">{user?.id || ''}</p>
+          <h2 className="mt-4 text-xl font-semibold text-gray-800">{userProfile?.name || user?.email || 'ユーザー'}</h2>
+          <p className="text-sm text-gray-500">{user?.email}</p>
         </div>
 
         <div className="space-y-4">
           <div className="border-t border-gray-200 pt-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-gray-500">生年月日</p>
-                <p className="text-sm font-medium">{user?.birthDate || '未設定'}</p>
+                <p className="text-xs text-gray-500">ユーザーID</p>
+                <p className="text-sm font-medium text-gray-400">{user?.id}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">年齢</p>
-                <p className="text-sm font-medium">{user?.age || 0} 歳</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">性別</p>
-                <p className="text-sm font-medium">{user?.gender || '未設定'}</p>
+                <p className="text-xs text-gray-500">ステータス</p>
+                <p className="text-sm font-medium">{userProfile?.status || 'guest'}</p>
               </div>
             </div>
           </div>
 
-          <div className="border-t border-gray-200 pt-4">
-            <p className="text-xs text-gray-500">所属</p>
-            <p className="text-sm font-medium">{user?.organization || '未設定'}</p>
-          </div>
+          {userProfile?.subscription_plan && (
+            <div className="border-t border-gray-200 pt-4">
+              <p className="text-xs text-gray-500">サブスクリプション</p>
+              <p className="text-sm font-medium">{userProfile.subscription_plan}</p>
+            </div>
+          )}
 
+          {/* デバイス一覧 */}
           <div className="border-t border-gray-200 pt-4">
-            <p className="text-xs text-gray-500">認知・性格特記欄</p>
-            <p className="text-sm whitespace-pre-wrap">{user?.notes || '情報がありません'}</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-gray-500">関連デバイス</p>
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                {devices.length}台
+              </span>
+            </div>
+            {devices.length > 0 ? (
+              <div className="space-y-2">
+                {devices.map((device) => (
+                  <div key={device.device_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">{device.device_type}</p>
+                      <p className="text-xs text-gray-500">{device.device_id}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        device.status === 'active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : device.status === 'inactive'
+                          ? 'bg-gray-100 text-gray-800'
+                          : device.status === 'syncing'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {device.status}
+                      </span>
+                      {device.last_sync && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          最終同期: {new Date(device.last_sync).toLocaleDateString('ja-JP')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">デバイスが登録されていません</p>
+            )}</div>
           </div>
 
           {/* 日付範囲一括更新機能 */}

@@ -6,12 +6,12 @@ import VibeGraph from '../components/dashboard/EmotionTimeline';
 import BehaviorGraph from '../components/dashboard/EventLogs';
 // import EmotionDistribution from '../components/dashboard/EmotionDistribution'; // 🗑️ 削除予定: 使用されていない感情分布コンポーネント
 import EmotionGraph from '../components/dashboard/EmotionGraph';
-import ProfileView from '../components/dashboard/ProfileView';
+import DeviceView from '../components/dashboard/DeviceView';
 import DateNavigation from '../components/common/DateNavigation';
 import ErrorBoundary from '../components/ErrorBoundary';
 import Avatar from '../components/common/Avatar';
+import { useAuth } from '../hooks/useAuth.jsx';
 import { 
-  getAllUsers, 
   getEmotionTimelineData, 
   getEventLogsData 
   // getEmotionDistributionData // 🗑️ 削除予定: 使用されていない感情分布API
@@ -27,12 +27,6 @@ import {
   ERROR_LEVELS
 } from '../utils/errorHandler';
 
-// デフォルトの利用可能なユーザーリスト（ファイルシステムにデータがない場合に使用）
-const defaultUsers = [
-  { id: 'user123', name: '佐藤由紀子', type: 'master', childrenIds: ['user456', 'user789'] },
-  { id: 'user456', name: '佐藤あやか', type: 'normal', parentId: 'user123' },
-  { id: 'user789', name: '佐藤みなと', type: 'normal', parentId: 'user123' }
-];
 
 // データ検証とサニタイゼーション関数（統一エラーハンドラー対応）
 const validateAndSanitizeData = (data, dataType) => {
@@ -130,6 +124,7 @@ const Dashboard = () => {
   console.log('==== Dashboard コンポーネント開始 ====');
   
   const [searchParams] = useSearchParams();
+  const { user, userProfile, signOut } = useAuth();
   
   // 統一エラーハンドラーの初期化
   const dashboardErrorHandler = useErrorHandler('Dashboard');
@@ -159,12 +154,8 @@ const Dashboard = () => {
     };
   }, [dashboardErrorHandler]);
   
-  // 利用可能なユーザーリスト
-  const [availableUsers, setAvailableUsers] = useState(defaultUsers);
-  // 現在選択されているユーザー
-  const [currentUser, setCurrentUser] = useState(defaultUsers[0]);
-  // アカウント選択ドロップダウンの表示状態
-  const [showUserSelector, setShowUserSelector] = useState(false);
+  // ログアウトドロップダウンの表示状態
+  const [showUserMenu, setShowUserMenu] = useState(false);
   
   // ナビゲーション関連
   const [activeTab, setActiveTab] = useState('timeline');
@@ -179,112 +170,38 @@ const Dashboard = () => {
   const [eventLogsData, setEventLogsData] = useState(null);
   // const [emotionDistributionData, setEmotionDistributionData] = useState(null); // 🗑️ 削除予定: 使用されていない感情分布データ
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 選択されたデバイスID
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
   console.log('Dashboard 初期化:', {
-    currentUser: currentUser?.id,
+    user: user?.email,
+    userProfile: userProfile?.name,
     activeTab,
     swipeIndex,
     emotionTimelineData: emotionTimelineData ? 'あり' : 'なし',
     eventLogsData: eventLogsData ? 'あり' : 'なし',
-    // emotionDistributionData: emotionDistributionData ? 'あり' : 'なし', // 🗑️ 削除予定
     isLoading
   });
-
-  // ファイルシステムからユーザーデータを読み込む
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        console.log('ユーザー情報を取得中...');
-        const users = await getAllUsers();
-        console.log('取得したユーザー情報:', users);
-        
-        // URLパラメータからユーザーIDを取得
-        const userIdFromUrl = searchParams.get('userId');
-        
-        if (users.length > 0) {
-          // URLパラメータで指定されたユーザーを探す
-          const targetUser = userIdFromUrl ? users.find(u => u.id === userIdFromUrl) : null;
-          const selectedUser = targetUser || users[0];
-          
-          // 親子関係を考慮してavailableUsersを設定
-          let availableUsersList = [];
-          
-          if (selectedUser.type === 'master') {
-            // マスターアカウントの場合：自分と子アカウントを表示
-            availableUsersList.push(selectedUser);
-            
-            if (selectedUser.childrenIds && selectedUser.childrenIds.length > 0) {
-              const childUsers = users.filter(u => selectedUser.childrenIds.includes(u.id));
-              availableUsersList.push(...childUsers);
-            }
-            
-            console.log('マスターアカウント - 表示可能ユーザー:', availableUsersList.map(u => u.name));
-          } else if (selectedUser.type === 'normal') {
-            // 通常アカウントの場合：自分のみ表示
-            availableUsersList.push(selectedUser);
-            console.log('通常アカウント - 表示可能ユーザー:', [selectedUser.name]);
-          } else {
-            // タイプが不明な場合は全ユーザーを表示（後方互換性）
-            availableUsersList = users;
-            console.log('不明なアカウントタイプ - 全ユーザーを表示');
-          }
-          
-          setAvailableUsers(availableUsersList);
-          setCurrentUser(selectedUser);
-          console.log('ユーザー情報を設定しました:', selectedUser);
-        } else {
-          // ファイルシステムにユーザーがない場合はデフォルトユーザーを使用
-          console.log('ファイルシステムにユーザーがないため、デフォルトユーザーを使用');
-          
-          // URLパラメータで指定されたユーザーを探す
-          const targetUser = userIdFromUrl ? defaultUsers.find(u => u.id === userIdFromUrl) : null;
-          const selectedUser = targetUser || defaultUsers[0];
-          
-          // デフォルトユーザーでも親子関係を考慮
-          let availableUsersList = [];
-          
-          if (selectedUser.type === 'master') {
-            // マスターアカウントの場合：自分と子アカウントを表示
-            availableUsersList = defaultUsers.filter(u => 
-              u.id === selectedUser.id || 
-              (u.type === 'normal' && u.parentId === selectedUser.id)
-            );
-          } else if (selectedUser.type === 'normal') {
-            // 通常アカウントの場合：自分のみ表示
-            availableUsersList = [selectedUser];
-          } else {
-            // タイプが不明な場合は全ユーザーを表示
-            availableUsersList = defaultUsers;
-          }
-          
-          setAvailableUsers(availableUsersList);
-          setCurrentUser(selectedUser);
-        }
-      } catch (error) {
-        console.error('ユーザーデータ読み込みエラー:', error);
-        console.log('エラーのため、デフォルトユーザーを使用');
-        // エラー時はデフォルトユーザーを使用
-        setAvailableUsers(defaultUsers);
-        setCurrentUser(defaultUsers[0]);
-      }
-    };
-    
-    loadUsers();
-  }, [searchParams]);
 
   // データ読み込み
   useEffect(() => {
     const fetchData = async () => {
+      if (!user?.id || !selectedDeviceId) {
+        console.log('データ取得スキップ - ユーザーIDまたはデバイスIDが未設定');
+        setIsLoading(false);
+        return;
+      }
+      
       setIsLoading(true);
       
       try {
-        const userId = currentUser.id;
-        console.log('データ取得開始 - ユーザーID:', userId, '対象日付:', selectedDate);
+        console.log('データ取得開始 - デバイスID:', selectedDeviceId, '対象日付:', selectedDate);
         
         // 各グラフのデータを並列で取得（感情分布は除外）
         const [timelineData, logsData] = await Promise.allSettled([
-          getEmotionTimelineData(userId, selectedDate),
-          getEventLogsData(userId, selectedDate)
+          getEmotionTimelineData(selectedDeviceId, selectedDate),
+          getEventLogsData(selectedDeviceId, selectedDate)
           // getEmotionDistributionData(userId, selectedDate) // 🗑️ 削除予定: 使用されていない感情分布API
         ]);
         
@@ -344,10 +261,8 @@ const Dashboard = () => {
       }
     };
     
-    if (currentUser && currentUser.id) {
-      fetchData();
-    }
-  }, [currentUser.id, selectedDate]); // ユーザーIDまたは選択日付が変更されたら再取得
+    fetchData();
+  }, [user?.id, selectedDeviceId, selectedDate]); // ユーザーID、デバイスID、または選択日付が変更されたら再取得
   
   useEffect(() => {
     // URLに基づいてアクティブなタブとスワイプインデックスを設定
@@ -358,8 +273,8 @@ const Dashboard = () => {
     } else if (path.includes('/dashboard/distribution')) {
       setActiveTab('distribution');
       setSwipeIndex(2);
-    } else if (path.includes('/dashboard/profile')) {
-      setActiveTab('profile');
+    } else if (path.includes('/dashboard/device')) {
+      setActiveTab('device');
       setSwipeIndex(3);
     } else {
       setActiveTab('timeline');
@@ -367,20 +282,14 @@ const Dashboard = () => {
     }
   }, []);
   
-  // アカウント切り替えハンドラー（状態管理を強化）
-  const handleUserChange = (user) => {
-    console.log('アカウント切り替え開始:', { from: currentUser?.id, to: user.id });
-    
-    // 状態を完全にリセット
-    setEmotionTimelineData(null);
-    setEventLogsData(null);
-    setIsLoading(true);
-    
-    // 新しいユーザーを設定
-    setCurrentUser(user);
-    setShowUserSelector(false);
-    
-    console.log('アカウント切り替え完了:', user.id);
+  // ログアウトハンドラー
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setShowUserMenu(false);
+    } catch (error) {
+      console.error('ログアウトエラー:', error);
+    }
   };
 
   // 日付変更ハンドラー
@@ -389,7 +298,13 @@ const Dashboard = () => {
     setSelectedDate(newDate);
   };
   
-  // データ更新ハンドラー（ProfileViewからの通知を受け取る）
+  // デバイス選択ハンドラー
+  const handleDeviceSelect = (deviceId) => {
+    console.log('デバイス選択:', deviceId);
+    setSelectedDeviceId(deviceId);
+  };
+  
+  // データ更新ハンドラー（DeviceViewからの通知を受け取る）
   const handleDataUpdate = async (updatedDate) => {
     console.log('データ更新通知を受信:', updatedDate);
     
@@ -399,13 +314,12 @@ const Dashboard = () => {
       setIsLoading(true);
       
       try {
-        const userId = currentUser.id;
-        console.log('データ再読み込み開始 - ユーザーID:', userId, '対象日付:', updatedDate);
+        console.log('データ再読み込み開始 - デバイスID:', selectedDeviceId, '対象日付:', updatedDate);
         
         // 各グラフのデータを並列で再取得（感情分布は除外）
         const [timelineData, logsData] = await Promise.allSettled([
-          getEmotionTimelineData(userId, updatedDate),
-          getEventLogsData(userId, updatedDate)
+          getEmotionTimelineData(selectedDeviceId, updatedDate),
+          getEventLogsData(selectedDeviceId, updatedDate)
           // getEmotionDistributionData(userId, updatedDate) // 🗑️ 削除予定
         ]);
         
@@ -483,9 +397,9 @@ const Dashboard = () => {
         setSwipeIndex(2);
         navigate('/dashboard/distribution');
         break;
-      case 'profile':
+      case 'device':
         setSwipeIndex(3);
-        navigate('/dashboard/profile');
+        navigate('/dashboard/device');
         break;
       default:
         setSwipeIndex(0);
@@ -509,8 +423,8 @@ const Dashboard = () => {
         navigate('/dashboard/distribution');
         break;
       case 3:
-        setActiveTab('profile');
-        navigate('/dashboard/profile');
+        setActiveTab('device');
+        navigate('/dashboard/device');
         break;
       default:
         setActiveTab('timeline');
@@ -518,85 +432,45 @@ const Dashboard = () => {
     }
   };
 
-  // ヘッダーに表示するアカウント選択UI
-  const headerAccountSelector = (
+  // ヘッダーに表示するユーザーメニュー
+  const headerUserMenu = (
     <div className="relative">
       <div 
         className="flex items-center cursor-pointer"
-        onClick={() => setShowUserSelector(!showUserSelector)}
+        onClick={() => setShowUserMenu(!showUserMenu)}
       >
         <Avatar
-          src={currentUser.profileImageUrl}
-          name={currentUser.name}
+          src={userProfile?.profile_image_url}
+          name={userProfile?.name || user?.email}
           size="small"
-          alt={currentUser.name}
+          alt={userProfile?.name || user?.email}
         />
         <div className="ml-2">
-          <p className="text-sm font-medium text-gray-800">{currentUser.name}</p>
+          <p className="text-sm font-medium text-gray-800">{userProfile?.name || user?.email}</p>
           <p className="text-xs text-gray-500">
-            {currentUser.type === 'master' ? 'マスターアカウント' : '家族アカウント'}
+            {userProfile?.status || 'guest'}
           </p>
         </div>
-        {availableUsers.length > 1 && (
-          <svg className="ml-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        )}
+        <svg className="ml-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
       </div>
       
-      {/* ユーザー選択ドロップダウン */}
-      {showUserSelector && availableUsers.length > 1 && (
-        <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg overflow-hidden z-10 w-72">
+      {/* ユーザーメニュードロップダウン */}
+      {showUserMenu && (
+        <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg overflow-hidden z-10 w-48">
           <div className="p-2">
             <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
-              アカウント切り替え
+              アカウントメニュー
             </div>
-            {availableUsers.map((user) => {
-              // 親子関係の表示テキストを決定
-              let relationshipText = '';
-              if (user.type === 'master') {
-                relationshipText = 'マスターアカウント';
-              } else if (user.type === 'normal') {
-                if (user.parentId === currentUser.id) {
-                  relationshipText = '子アカウント';
-                } else if (currentUser.type === 'master' && currentUser.childrenIds?.includes(user.id)) {
-                  relationshipText = '子アカウント';
-                } else {
-                  relationshipText = '家族アカウント';
-                }
-              }
-              
-              return (
-                <div
-                  key={user.id}
-                  onClick={() => handleUserChange(user)}
-                  className={`flex items-center p-2 rounded-md cursor-pointer ${
-                    user.id === currentUser.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <Avatar
-                    src={user.profileImageUrl}
-                    name={user.name}
-                    size="small"
-                    alt={user.name}
-                    fallbackColor={user.id === currentUser.id ? 'bg-blue-500' : 'bg-gray-500'}
-                  />
-                  <div className="ml-3 flex-1">
-                    <div className="flex items-center">
-                      <p className={`text-sm font-medium ${
-                        user.id === currentUser.id ? 'text-blue-600' : 'text-gray-800'
-                      }`}>{user.name}</p>
-                      {user.id === currentUser.id && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
-                          現在
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500">{relationshipText}</p>
-                  </div>
-                </div>
-              );
-            })}
+            <div className="mt-1">
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
+              >
+                ログアウト
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -604,7 +478,7 @@ const Dashboard = () => {
   );
 
   // 日付ナビゲーションコンポーネント（プロフィールタブ以外で表示）
-  const dateNavigationComponent = activeTab !== 'profile' ? (
+  const dateNavigationComponent = activeTab !== 'device' ? (
     <DateNavigation
       selectedDate={selectedDate}
       onDateChange={handleDateChange}
@@ -615,10 +489,10 @@ const Dashboard = () => {
   return (
     <ErrorBoundary>
       <MobileLayout
-        userData={currentUser}
+        userData={userProfile || { name: user?.email }}
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        headerContent={headerAccountSelector}
+        headerContent={headerUserMenu}
         dateNavigation={dateNavigationComponent}
         hideNotifications={false}
       >
@@ -630,12 +504,12 @@ const Dashboard = () => {
                 console.log('レンダリング準備 - VibeGraph');
                 console.log('emotionTimelineData:', emotionTimelineData);
                 console.log('isLoading:', isLoading);
-                console.log('currentUser.id:', currentUser.id);
+                console.log('user.id:', user.id);
                 
                 try {
                   return (
                     <VibeGraph
-                      userId={currentUser.id}
+                      userId={selectedDeviceId}
                       selectedDate={selectedDate}
                     />
                   );
@@ -663,7 +537,7 @@ const Dashboard = () => {
                 try {
                   return (
                     <BehaviorGraph
-                      userId={currentUser.id}
+                      userId={selectedDeviceId}
                       selectedDate={selectedDate}
                     />
                   );
@@ -685,12 +559,12 @@ const Dashboard = () => {
             <ErrorBoundary>
               {(() => {
                 console.log('レンダリング準備 - EmotionGraph (新感情グラフ)');
-                console.log('currentUser.id:', currentUser.id, 'selectedDate:', selectedDate);
+                console.log('user.id:', user.id, 'selectedDate:', selectedDate);
                 
                 try {
                   return (
                     <EmotionGraph
-                      userId={currentUser.id}
+                      userId={selectedDeviceId}
                       selectedDate={selectedDate}
                     />
                   );
@@ -707,25 +581,23 @@ const Dashboard = () => {
             </ErrorBoundary>
           </div>
 
-          {/* プロフィール */}
+          {/* デバイス管理 */}
           <div>
             <ErrorBoundary>
               {(() => {
-                console.log('レンダリング準備 - ProfileView');
+                console.log('レンダリング準備 - DeviceView');
                 
                 try {
                   return (
-                    <ProfileView
-                      userId={currentUser.id}
-                      isLoading={isLoading}
-                      onDataUpdate={handleDataUpdate}
+                    <DeviceView
+                      onDeviceSelect={handleDeviceSelect}
                     />
                   );
                 } catch (error) {
-                  console.error('ProfileViewコンポーネントでエラー:', error);
+                  console.error('DeviceViewコンポーネントでエラー:', error);
                   return (
                     <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <h3 className="text-red-800 font-semibold">ProfileViewエラー</h3>
+                      <h3 className="text-red-800 font-semibold">DeviceViewエラー</h3>
                       <p className="text-red-600 text-sm">{error.message}</p>
                     </div>
                   );

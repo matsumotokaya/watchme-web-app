@@ -297,15 +297,15 @@ const MobileLayout = ({ children, userData, activeTab, onTabChange, headerConten
             </li>
             <li className="flex-1">
               <button
-                onClick={() => onTabChange('profile')}
+                onClick={() => onTabChange('device')}
                 className={`w-full py-3 flex flex-col items-center ${
-                  activeTab === 'profile' ? 'text-blue-600' : 'text-gray-500'
+                  activeTab === 'device' ? 'text-blue-600' : 'text-gray-500'
                 }`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                <span className="mt-1 text-xs font-medium">プロフィール</span>
+                <span className="mt-1 text-xs font-medium">デバイス</span>
               </button>
             </li>
           </ul>

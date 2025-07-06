@@ -40,6 +40,11 @@ function AppContent() {
             <Dashboard />
           </ProtectedRoute>
         } />
+        <Route path="/dashboard/device" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
         <Route path="/admin" element={
           <ProtectedRoute>
             <Admin />

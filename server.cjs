@@ -44,56 +44,56 @@ async function ensureDirectory(dirPath) {
   }
 }
 
-// ユーザーファイルの初期化
-async function ensureUsersFile() {
-  try {
-    await fsPromises.access(USERS_FILE, fs.constants.F_OK);
-  } catch (error) {
-    // ファイルが存在しない場合はデフォルトユーザーで初期化
-    const defaultUsers = [
-      { 
-        id: 'user123',
-        name: '佐藤由紀子',
-        birthDate: '1990-05-15',
-        age: 33,
-        gender: '女',
-        organization: '株式会社サンプル',
-        notes: '集中力が高い。細かい作業が得意。',
-        profileImageUrl: `/avatars/avatar-user123.png`,
-        type: 'master'
-      },
-      { 
-        id: 'user456',
-        name: '佐藤あやか',
-        birthDate: '2015-12-03',
-        age: 8,
-        gender: '女',
-        organization: '○○小学校',
-        notes: '社交的で活発。言語能力が高い。',
-        profileImageUrl: `/avatars/avatar-user456.png`,
-        type: 'normal'
-      },
-      { 
-        id: 'user789',
-        name: '佐藤みなと',
-        birthDate: '2018-07-22',
-        age: 5,
-        gender: '男',
-        organization: '△△幼稚園',
-        notes: '好奇心旺盛。集中時間が短い傾向あり。',
-        profileImageUrl: `/avatars/avatar-user789.png`,
-        type: 'normal'
-      }
-    ];
-    await fsPromises.writeFile(USERS_FILE, JSON.stringify(defaultUsers, null, 2));
-    console.log('デフォルトユーザーファイルを作成しました');
-  }
-}
+// ユーザーファイルの初期化 - Supabaseを使用するため無効化
+// async function ensureUsersFile() {
+//   try {
+//     await fsPromises.access(USERS_FILE, fs.constants.F_OK);
+//   } catch (error) {
+//     // ファイルが存在しない場合はデフォルトユーザーで初期化
+//     const defaultUsers = [
+//       { 
+//         id: 'user123',
+//         name: '佐藤由紀子',
+//         birthDate: '1990-05-15',
+//         age: 33,
+//         gender: '女',
+//         organization: '株式会社サンプル',
+//         notes: '集中力が高い。細かい作業が得意。',
+//         profileImageUrl: `/avatars/avatar-user123.png`,
+//         type: 'master'
+//       },
+//       { 
+//         id: 'user456',
+//         name: '佐藤あやか',
+//         birthDate: '2015-12-03',
+//         age: 8,
+//         gender: '女',
+//         organization: '○○小学校',
+//         notes: '社交的で活発。言語能力が高い。',
+//         profileImageUrl: `/avatars/avatar-user456.png`,
+//         type: 'normal'
+//       },
+//       { 
+//         id: 'user789',
+//         name: '佐藤みなと',
+//         birthDate: '2018-07-22',
+//         age: 5,
+//         gender: '男',
+//         organization: '△△幼稚園',
+//         notes: '好奇心旺盛。集中時間が短い傾向あり。',
+//         profileImageUrl: `/avatars/avatar-user789.png`,
+//         type: 'normal'
+//       }
+//     ];
+//     await fsPromises.writeFile(USERS_FILE, JSON.stringify(defaultUsers, null, 2));
+//     console.log('デフォルトユーザーファイルを作成しました');
+//   }
+// }
 
 // サーバー起動時にルートデータディレクトリを確認
 (async () => {
   await ensureDirectory(DATA_ROOT);
-  await ensureUsersFile();
+  // await ensureUsersFile(); // Supabaseを使用するため無効化
   console.log(`データディレクトリを確認: ${DATA_ROOT}`);
 })();
 
