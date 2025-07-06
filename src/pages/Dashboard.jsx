@@ -441,12 +441,14 @@ const Dashboard = () => {
       >
         <Avatar
           src={userProfile?.profile_image_url}
-          name={userProfile?.name || user?.email}
+          name={userProfile?.name || user?.email || 'ゲスト'}
           size="small"
-          alt={userProfile?.name || user?.email}
+          alt={userProfile?.name || user?.email || 'ゲスト'}
         />
         <div className="ml-2">
-          <p className="text-sm font-medium text-gray-800">{userProfile?.name || user?.email}</p>
+          <p className="text-sm font-medium text-gray-800">
+            {userProfile?.name || user?.email?.split('@')[0] || 'ゲスト'}
+          </p>
           <p className="text-xs text-gray-500">
             {userProfile?.status || 'guest'}
           </p>

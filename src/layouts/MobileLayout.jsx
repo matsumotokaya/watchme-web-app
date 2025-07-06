@@ -28,14 +28,17 @@ const MobileLayout = ({ children, userData, activeTab, onTabChange, headerConten
   }, []);
   
   // ユーザーのお知らせを取得
+  // ⚠️ 注意: 通知機能は現在開発中のため、右上の通知アイコンは正常に動作しません
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!userData?.id) return;
       
       try {
         setIsLoadingNotifications(true);
-        const userNotifications = await getUserNotifications(userData.id);
-        setNotifications(userNotifications);
+        // TODO: 通知機能の実装完了後にコメントアウトを解除
+        // const userNotifications = await getUserNotifications(userData.id);
+        // setNotifications(userNotifications);
+        setNotifications([]); // 開発中のため空配列を設定
       } catch (error) {
         console.error('お知らせ取得エラー:', error);
         setNotifications([]);
@@ -195,12 +198,15 @@ const MobileLayout = ({ children, userData, activeTab, onTabChange, headerConten
   const unreadCount = displayNotifications.filter(n => !n.isRead && !n.read).length;
 
   // お知らせページに遷移
+  // ⚠️ 注意: 通知機能は開発中のため、現在は機能しません
   const handleNotificationClick = () => {
-    if (userData?.id) {
-      navigate(`/notifications/${userData.id}`);
-    } else {
-      navigate('/notifications');
-    }
+    // TODO: 通知機能の実装完了後にコメントアウトを解除
+    console.warn('通知機能は現在開発中です');
+    // if (userData?.id) {
+    //   navigate(`/notifications/${userData.id}`);
+    // } else {
+    //   navigate('/notifications');
+    // }
   };
   
   return (

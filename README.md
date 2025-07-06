@@ -1,4 +1,4 @@
-# 📊 WatchMe v8 - 心理分析ダッシュボードシステム
+# 📊 WatchMe v8 - WatchMe(ウェブ版)
 
 [![React](https://img.shields.io/badge/React-18.3.1-blue)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3.5-green)](https://vitejs.dev/)
@@ -8,17 +8,17 @@
 
 ## 🎯 プロジェクト概要
 
-WatchMe v8は、**Supabase認証システム**を統合した心理状態と行動ログを可視化・分析するライフログツールです。デバイスベースのデータ収集により、ユーザーアカウントと測定デバイスを柔軟に関連付けて、モバイルファースト設計のダッシュボードで日々の活動を客観的に表示します。
+WatchMeは、音声メタ情報から「こころ」を可視化するツールです。心理グラフ、行動グラフ、感情グラフから構成され、認知特性やメンタルヘルスを定量的に計るために用いられます。**Supabase認証システム**を統合したデバイスベースのデータ収集により、ユーザーアカウントと測定デバイスを柔軟に関連付けて、モバイルファースト設計のダッシュボードで日々の活動を客観的に表示します。
 
 ### ✨ 主要機能
-- 🔐 **Supabase認証**: メール/パスワードによる安全なログイン機能
-- 📱 **デバイスベース管理**: ユーザーアカウントに複数のデバイス（device_id）を関連付け
 - 💭 **心理グラフ（VibeGraph）**: 心理スコアの時系列グラフ表示（-100〜+100、30分間隔48ポイント）
 - 🎵 **行動グラフ（BehaviorGraph）**: 音響イベント分析・SED（Sound Event Detection）による行動パターン可視化
 - 🎭 **感情グラフ（EmotionGraph）**: ✅ **【実装完了】** Plutchik 8感情分類グラフ（OpenSMILE音声特徴量による感情分析）
+- 🔐 **Supabase認証**: メール/パスワードによる安全なログイン機能
+- 📱 **デバイスベース管理**: ユーザーアカウントに複数のデバイス（device_id）を関連付け
 - 👤 **プロフィール**: ユーザー情報と設定管理
-- 📢 **通知システム**: リアルタイム通知・管理機能
-- 🔧 **管理画面**: 通知管理・ユーザー管理・データアップロード
+- 📢 **通知システム**: リアルタイム通知・管理機能 ⚠️ **開発中** - 右上の通知アイコンは現在動作しません
+- 🔧 **管理画面**: 通知管理・ユーザー管理・データアップロード　→ WatchMe Adminに移行中
 
 ## 🚀 クイックスタート
 
@@ -148,30 +148,33 @@ watchme_v8/
 - 1番目タブ：**心理グラフ** - 心理スコア時系列 ✅ 実装済み
 - 2番目タブ：**行動グラフ** - 行動ログ分析 ✅ 実装済み  
 - 3番目タブ：**感情グラフ** - Plutchik 8感情分類 ✅ 実装済み
-- 4番目タブ：**プロフィール** - ユーザー情報 ✅ 実装済み
+- 4番目タブ：**デバイス** - デバイス情報 ✅ 実装済み
 
 #### **内部コンポーネント名とファイル対応（重要）**
 混乱を避けるため、内部的なコンポーネント名を以下に統一しました：
 
-| UI表示名 | 内部コンポーネント名 | ファイルパス | APIエンドポイント |
+| UI表示名 | 内部コンポーネント名 | ファイルパス | データソース |
 |---------|------------------|-------------|------------------|
-| **心理グラフ** | `VibeGraph` | `src/components/dashboard/EmotionTimeline.jsx` | `/api/users/{userId}/logs/{date}/emotion-timeline` |
-| **行動グラフ** | `BehaviorGraph` | `src/components/dashboard/EventLogs.jsx` | `/api/users/{userId}/logs/{date}/sed-summary` |
-| **感情グラフ** | `EmotionGraph` | `src/components/dashboard/EmotionGraph.jsx` | `/api/users/{userId}/logs/{date}/opensmile-summary` |
+| **心理グラフ** | `VibeGraph` | `src/components/dashboard/EmotionTimeline.jsx` | `/api/users/{deviceId}/logs/{date}/emotion-timeline` |
+| **行動グラフ** | `BehaviorGraph` | `src/components/dashboard/EventLogs.jsx` | `/api/users/{deviceId}/logs/{date}/sed-summary` |
+| **感情グラフ** | `EmotionGraph` | `src/components/dashboard/EmotionGraph.jsx` | `/api/users/{deviceId}/logs/{date}/opensmile-summary` |
 | **デバイス管理** | `DeviceView` | `src/components/dashboard/DeviceView.jsx` | Supabase `devices` テーブル |
 
-⚠️ **注意**: ファイルパスとAPIエンドポイントは歴史的経緯により異なる命名となっています。今後の開発時は上記対応表を参照してください。
+⚠️ **重要**: 
+- **グラフデータは全て`device_id`に紐づきます**
+- ユーザーは複数のデバイスを管理でき、デバイス選択でグラフを切り替え可能
+- APIエンドポイントパスの`{userId}`部分には実際は`device_id`が渡されます（歴史的経緯による命名）
 
 #### **実装完了内容（2025年6月30日）**
 - **実装場所**: `src/components/dashboard/EmotionGraph.jsx`
-- **データソース**: Vault API `/api/users/{userId}/logs/{date}/opensmile-summary` からリアルタイム取得
+- **データソース**: Vault API `/api/users/{deviceId}/logs/{date}/opensmile-summary` からリアルタイム取得
 - **API連携**: ✅ 完全実装（useVaultAPIフック使用）
 - **動作**: OpenSMILE音声特徴量解析による実際の感情データを表示
 
 #### **実装済み機能**
-- ✅ 実際のユーザーデータの表示（OpenSMILE音声特徴量ベース）
+- ✅ 実際のデバイスデータの表示（OpenSMILE音声特徴量ベース）
 - ✅ 日付変更時のデータ自動更新
-- ✅ ユーザー切り替え時のデータ自動変更  
+- ✅ デバイス切り替え時のデータ自動変更  
 - ✅ Vault APIからのリアルタイムデータ取得
 - ✅ Plutchik 8感情分類グラフ（怒り、恐れ、期待、驚き、喜び、悲しみ、信頼、嫌悪）
 - ✅ 感情フィルター機能（表示/非表示切り替え）
@@ -634,10 +637,12 @@ npm run lint -- --debug
 - **認証状態管理**: ✅ **実装完了** - useAuthカスタムフック
 - **ルート保護**: ✅ **実装完了** - ProtectedRouteコンポーネント
 
-#### 新しいデータ構造
+#### デバイスベースデータ管理システム
 - **ユーザーアカウント**: Supabaseのauth.usersテーブルで管理
-- **デバイス管理**: device_idベースでユーザーアカウントと関連付け
-- **データ取得**: アカウント → 選択デバイス → グラフデータの流れ
+- **デバイス管理**: 1ユーザーが複数のデバイス（device_id）を所有可能
+- **グラフデータ**: 全てdevice_idに紐づく（心理グラフ、行動グラフ、感情グラフ）
+- **データフロー**: ユーザーログイン → デバイス選択 → 選択デバイスのグラフ表示
+- **デバイス切り替え**: ダッシュボード内でリアルタイムにデバイスを切り替え可能
 
 #### 実装済み認証機能
 - **メール/パスワード認証**: Supabase Authを使用

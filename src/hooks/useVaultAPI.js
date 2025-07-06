@@ -85,6 +85,14 @@ const useVaultAPI = (endpoint, userId, selectedDate) => {
       });
 
       if (!response.ok) {
+        // 404は「データなし（測定なし）」として正常な状態
+        if (response.status === 404) {
+          console.log(`📄 ${endpoint}データなし (測定なし期間):`, { userId, selectedDate });
+          setData(null);
+          setError(null);
+          return;
+        }
+        
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 

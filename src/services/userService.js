@@ -15,7 +15,7 @@ export const getCurrentUserProfile = async (userId) => {
     
     // タイムアウト付きでSupabaseクエリを実行
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+      setTimeout(() => reject(new Error('Profile fetch timeout')), 2000)
     );
     
     const queryPromise = supabase
@@ -28,26 +28,16 @@ export const getCurrentUserProfile = async (userId) => {
 
     if (error) {
       console.error('ユーザープロフィール取得エラー:', error);
-      // デフォルトプロフィールを返す
-      return {
-        user_id: userId,
-        name: 'ユーザー',
-        email: '',
-        created_at: new Date().toISOString()
-      };
+      // デフォルトプロフィールを返す（エラーではないので名前は保持しない）
+      return null;
     }
 
     console.log('ユーザープロフィール取得成功:', data);
     return data;
   } catch (err) {
     console.error('getCurrentUserProfile例外:', err);
-    // タイムアウトまたはエラー時はデフォルトプロフィールを返す
-    return {
-      user_id: userId,
-      name: 'ユーザー',
-      email: '',
-      created_at: new Date().toISOString()
-    };
+    // タイムアウトまたはエラー時はnullを返す
+    return null;
   }
 };
 
@@ -63,7 +53,7 @@ export const getUserDevices = async (userId) => {
     
     // タイムアウト付きでクエリを実行
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Device fetch timeout')), 10000)
+      setTimeout(() => reject(new Error('Device fetch timeout')), 3000)
     );
     
     const queryPromise = supabase
