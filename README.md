@@ -113,7 +113,7 @@ watchme_v8/
 │   ├── 📁 services/          # API サービス
 │   └── 📁 utils/             # ユーティリティ
 ├── 📁 data_accounts/         # ローカルデータストレージ
-│   └── 📁 {user_id}/         # ユーザー別データ
+│   └── 📁 {device_id}/       # デバイス別データ
 │       └── 📁 logs/          # 日付別ログファイル
 ├── 📁 public/                # 静的ファイル
 │   └── 📁 avatars/           # プロフィール画像
@@ -123,8 +123,8 @@ watchme_v8/
 ```
 
 **データフロー**:
-1. **EC2 Vault API** → `https://api.hey-watch.me/api/users/{userId}/logs/{date}/emotion-timeline`
-2. **ローカルキャッシュ** → `data_accounts/{userId}/logs/{date}.json`
+1. **EC2 Vault API** → `https://api.hey-watch.me/api/users/{deviceId}/logs/{date}/emotion-timeline`
+2. **ローカルキャッシュ** → `data_accounts/{deviceId}/logs/{date}.json`
 3. **フロントエンド表示** → React コンポーネント
 
 ### 🔧 技術スタック
@@ -205,16 +205,16 @@ watchme_v8/
 `server.cjs`に以下のプロキシエンドポイントが実装されています。フロントエンドからはこちらを呼び出してください。
 
 -   **心理グラフ (感情タイムライン)**:
-    -   `GET /api/proxy/emotion-timeline/:userId/:date`
-    -   転送先: `https://api.hey-watch.me/api/users/:userId/logs/:date/emotion-timeline`
+    -   `GET /api/proxy/emotion-timeline/:deviceId/:date`
+    -   転送先: `https://api.hey-watch.me/api/users/:deviceId/logs/:date/emotion-timeline`
 
 -   **行動グラフ (SEDサマリー)**:
-    -   `GET /api/proxy/sed-summary/:userId/:date`
-    -   転送先: `https://api.hey-watch.me/api/users/:userId/logs/:date/sed-summary`
+    -   `GET /api/proxy/sed-summary/:deviceId/:date`
+    -   転送先: `https://api.hey-watch.me/api/users/:deviceId/logs/:date/sed-summary`
 
 -   **感情グラフ (OpenSMILEサマリー)**:
-    -   `GET /api/proxy/opensmile-summary/:userId/:date`
-    -   転送先: `https://api.hey-watch.me/api/users/:userId/logs/:date/opensmile-summary`
+    -   `GET /api/proxy/opensmile-summary/:deviceId/:date`
+    -   転送先: `https://api.hey-watch.me/api/users/:deviceId/logs/:date/opensmile-summary`
 
 #### 謎：なぜ以前は心理グラフが動いたのか？
 
@@ -236,9 +236,9 @@ CORSエラーは、**キャッシュされていない新しいデータ**を**�
 #### **統一後の実装状況**
 
 **✅ 正式API形式（統一完了）**:
-- **心理グラフ（感情タイムライン）**: `GET /api/users/{userId}/logs/{date}/emotion-timeline`
-- **行動グラフ（SEDサマリー）**: `GET /api/users/{userId}/logs/{date}/sed-summary`
-- **感情グラフ（OpenSMILEサマリー）**: `GET /api/users/{userId}/logs/{date}/opensmile-summary` 🆕
+- **心理グラフ（感情タイムライン）**: `GET /api/users/{deviceId}/logs/{date}/emotion-timeline`
+- **行動グラフ（SEDサマリー）**: `GET /api/users/{deviceId}/logs/{date}/sed-summary`
+- **感情グラフ（OpenSMILEサマリー）**: `GET /api/users/{deviceId}/logs/{date}/opensmile-summary` 🆕
 
 3つすべて以下の特徴を持ちます：
 - 専用のFastAPIエンドポイントで実装
@@ -249,9 +249,9 @@ CORSエラーは、**キャッシュされていない新しいデータ**を**�
 
 ```
 ✅ 統一API：全てのダッシュボードデータが正式API形式
-/api/users/{userId}/logs/{date}/emotion-timeline    # 心理グラフ（感情タイムライン）
-/api/users/{userId}/logs/{date}/sed-summary         # 行動グラフ（SEDサマリー）
-/api/users/{userId}/logs/{date}/opensmile-summary   # 感情グラフ（OpenSMILEサマリー）🆕
+/api/users/{deviceId}/logs/{date}/emotion-timeline    # 心理グラフ（感情タイムライン）
+/api/users/{deviceId}/logs/{date}/sed-summary         # 行動グラフ（SEDサマリー）
+/api/users/{deviceId}/logs/{date}/opensmile-summary   # 感情グラフ（OpenSMILEサマリー）🆕
 
 📁 別用途：ファイル管理・デバッグ用途  
 /status                                           # HTMLファイル一覧
@@ -280,13 +280,13 @@ CORSエラーは、**キャッシュされていない新しいデータ**を**�
 
 本ダッシュボードの心理グラフ（1番目タブ）は以下のエンドポイントから取得されます：
 
-- **エンドポイント**: `GET /api/users/{user_id}/logs/{date}/emotion-timeline`
-- **対象ファイル**: `/home/ubuntu/data/data_accounts/{user_id}/{date}/emotion-timeline/emotion-timeline.json`
+- **エンドポイント**: `GET /api/users/{device_id}/logs/{date}/emotion-timeline`
+- **対象ファイル**: `/home/ubuntu/data/data_accounts/{device_id}/{date}/emotion-timeline/emotion-timeline.json`
 - **取得されたJSONは最大48スロット（30分ごと）の心理スコア（-100〜+100）を含みます**
 
 **EC2 Vault API設定**:
 - **ベースURL**: `https://api.hey-watch.me`
-- **エンドポイント**: `/api/users/{userId}/logs/{date}/emotion-timeline`
+- **エンドポイント**: `/api/users/{deviceId}/logs/{date}/emotion-timeline`
 - **データなし時**: 測定なし期間として客観的に表示
 
 ## 📚 ドキュメント
