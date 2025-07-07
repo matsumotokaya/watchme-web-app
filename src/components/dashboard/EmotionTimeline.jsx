@@ -30,10 +30,10 @@ ChartJS.register(
   Filler
 );
 
-const VibeGraph = ({ userId, selectedDate }) => {
+const VibeGraph = ({ deviceId, selectedDate }) => {
   const { data, isLoading, isRefreshing, error, refresh } = useVaultAPI(
     'emotion-timeline',
-    userId,
+    deviceId,
     selectedDate
   );
 

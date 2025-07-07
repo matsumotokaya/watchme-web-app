@@ -3,9 +3,17 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const { promises: fsPromises } = fs;
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Supabaseクライアントの初期化
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.VITE_SUPABASE_ANON_KEY
+);
 
 // ミドルウェア
 app.use(cors());
@@ -191,6 +199,65 @@ app.get('/api/proxy/emotion-timeline/:userId/:date', async (req, res) => {
         error: 'データ取得中に予期しないエラーが発生しました。' 
       });
     }
+  }
+});
+
+// Supabaseからemotion-timelineデータを取得する新しいエンドポイント
+app.get('/api/proxy/emotion-timeline-supabase/:deviceId/:date', async (req, res) => {
+  const { deviceId, date } = req.params;
+  
+  console.log(`[PROXY] Emotion Timeline from Supabase: device=${deviceId}, date=${date}`);
+  try {
+    // vibe_whisper_summaryテーブルからデータを取得
+    const { data: summaryData, error } = await supabase
+      .from('vibe_whisper_summary')
+      .select('*')
+      .eq('device_id', deviceId)
+      .eq('date', date)
+      .single();
+    
+    if (error) {
+      console.log(`[PROXY] Supabase Error:`, error);
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'この日付のデータは見つかりません' });
+      }
+      return res.status(500).json({ error: 'データベースエラーが発生しました' });
+    }
+    
+    if (!summaryData) {
+      return res.status(404).json({ error: 'この日付のデータは見つかりません' });
+    }
+    
+    // 時間ポイントを生成（00:00から23:30まで30分刻み）
+    const generateTimePoints = () => {
+      const timePoints = [];
+      for (let hour = 0; hour < 24; hour++) {
+        timePoints.push(`${hour.toString().padStart(2, '0')}:00`);
+        timePoints.push(`${hour.toString().padStart(2, '0')}:30`);
+      }
+      return timePoints;
+    };
+    
+    // EmotionTimeline.jsxが期待する形式に変換
+    const emotionTimelineData = {
+      timePoints: generateTimePoints(),
+      emotionScores: summaryData.vibe_scores || [],
+      averageScore: summaryData.average_score || 0,
+      positiveHours: summaryData.positive_hours || 0,
+      negativeHours: summaryData.negative_hours || 0,
+      neutralHours: summaryData.neutral_hours || 0,
+      insights: summaryData.insights || [],
+      emotionChanges: summaryData.vibe_changes || [],
+      date: summaryData.date,
+      processedAt: summaryData.processed_at,
+      deviceId: summaryData.device_id
+    };
+    
+    console.log(`[PROXY] Supabase data retrieved successfully`);
+    res.json(emotionTimelineData);
+  } catch (error) {
+    console.log(`[PROXY] Emotion Timeline from Supabase取得で問題が発生:`, error);
+    res.status(500).json({ error: 'データ取得中に予期しないエラーが発生しました。' });
   }
 });
 

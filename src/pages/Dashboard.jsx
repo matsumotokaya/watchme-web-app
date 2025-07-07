@@ -511,7 +511,7 @@ const Dashboard = () => {
                 try {
                   return (
                     <VibeGraph
-                      userId={selectedDeviceId}
+                      deviceId={selectedDeviceId}
                       selectedDate={selectedDate}
                     />
                   );

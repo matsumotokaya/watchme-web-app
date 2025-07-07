@@ -42,11 +42,11 @@ const normalizeNaNValues = (obj) => {
 /**
  * Vault APIからデータを取得するカスタムフック
  * @param {string} endpoint - APIエンドポイント ('emotion-timeline' | 'sed-summary')
- * @param {string} userId - ユーザーID
+ * @param {string} deviceId - デバイスID
  * @param {string} selectedDate - 選択された日付
  * @returns {Object} - { data, isLoading, isRefreshing, error, refresh }
  */
-const useVaultAPI = (endpoint, userId, selectedDate) => {
+const useVaultAPI = (endpoint, deviceId, selectedDate) => {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -56,8 +56,8 @@ const useVaultAPI = (endpoint, userId, selectedDate) => {
    * APIからデータを取得する共通ロジック
    */
   const fetchData = async (isRefresh = false) => {
-    if (!userId || !selectedDate) {
-      console.warn('ユーザーIDまたは選択日付が指定されていません:', { userId, selectedDate });
+    if (!deviceId || !selectedDate) {
+      console.warn('デバイスIDまたは選択日付が指定されていません:', { deviceId, selectedDate });
       return;
     }
 
@@ -69,9 +69,22 @@ const useVaultAPI = (endpoint, userId, selectedDate) => {
     setError(null);
 
     try {
-      const url = `/api/proxy/${endpoint}/${userId}/${selectedDate}`;
-      console.log(`🔄 プロキシ経由で${endpoint}データを取得中...`);
+      // データソースに応じてエンドポイントを切り替え
+      const dataSource = import.meta.env.VITE_DATA_SOURCE || 'vault';
+      let url;
+      
+      if (dataSource === 'supabase' && endpoint === 'emotion-timeline') {
+        // Supabaseモードの場合は専用エンドポイントを使用
+        url = `/api/proxy/emotion-timeline-supabase/${deviceId}/${selectedDate}`;
+        console.log(`🔄 Supabase経由で${endpoint}データを取得中...`);
+      } else {
+        // Vaultモード（デフォルト）
+        url = `/api/proxy/${endpoint}/${deviceId}/${selectedDate}`;
+        console.log(`🔄 プロキシ経由で${endpoint}データを取得中...`);
+      }
+      
       console.log('🌐 リクエストURL (プロキシ):', url);
+      console.log('📦 データソース:', dataSource);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -87,7 +100,7 @@ const useVaultAPI = (endpoint, userId, selectedDate) => {
       if (!response.ok) {
         // 404は「データなし（測定なし）」として正常な状態
         if (response.status === 404) {
-          console.log(`📄 ${endpoint}データなし (測定なし期間):`, { userId, selectedDate });
+          console.log(`📄 ${endpoint}データなし (測定なし期間):`, { deviceId, selectedDate });
           setData(null);
           setError(null);
           return;
@@ -132,7 +145,7 @@ const useVaultAPI = (endpoint, userId, selectedDate) => {
     setError(null);
     
     fetchData();
-  }, [userId, selectedDate, endpoint]);
+  }, [deviceId, selectedDate, endpoint]);
 
   return {
     data,

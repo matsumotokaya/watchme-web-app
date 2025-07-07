@@ -11,9 +11,9 @@
 WatchMeは、音声メタ情報から「こころ」を可視化するツールです。心理グラフ、行動グラフ、感情グラフから構成され、認知特性やメンタルヘルスを定量的に計るために用いられます。**Supabase認証システム**を統合したデバイスベースのデータ収集により、ユーザーアカウントと測定デバイスを柔軟に関連付けて、モバイルファースト設計のダッシュボードで日々の活動を客観的に表示します。
 
 ### ✨ 主要機能
-- 💭 **心理グラフ（VibeGraph）**: 心理スコアの時系列グラフ表示（-100〜+100、30分間隔48ポイント）
-- 🎵 **行動グラフ（BehaviorGraph）**: 音響イベント分析・SED（Sound Event Detection）による行動パターン可視化
-- 🎭 **感情グラフ（EmotionGraph）**: ✅ **【実装完了】** Plutchik 8感情分類グラフ（OpenSMILE音声特徴量による感情分析）
+- 💭 **心理グラフ（VibeGraph）**: ✅ **【Supabase統合完了】** 心理スコアの時系列グラフ表示（-100〜+100、30分間隔48ポイント）
+- 🎵 **行動グラフ（BehaviorGraph）**: 音響イベント分析・SED（Sound Event Detection）による行動パターン可視化 ⚠️ **Vault API使用中**
+- 🎭 **感情グラフ（EmotionGraph）**: Plutchik 8感情分類グラフ（OpenSMILE音声特徴量による感情分析） ⚠️ **Vault API使用中**
 - 🔐 **Supabase認証**: メール/パスワードによる安全なログイン機能
 - 📱 **デバイスベース管理**: ユーザーアカウントに複数のデバイス（device_id）を関連付け
 - 👤 **プロフィール**: ユーザー情報と設定管理
@@ -40,6 +40,9 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 # 開発用設定
 NODE_ENV=development
+
+# データソース設定（supabase または vault）
+VITE_DATA_SOURCE=supabase
 ```
 
 #### **2. 依存関係インストール**
@@ -81,8 +84,8 @@ npm run server       # バックエンド（ポート3001）
 ## 📱 機能概要
 
 ### ダッシュボード
-- 心理グラフ（30分間隔48ポイント）
-- EC2 Vault API（https://api.hey-watch.me）からのデータ取得
+- **心理グラフ（30分間隔48ポイント）**: ✅ **Supabaseデータベース統合完了**
+- **行動グラフ・感情グラフ**: EC2 Vault API（https://api.hey-watch.me）からのデータ取得 ⚠️ **次回統合予定**
 - **フロントエンド側でのデータ前処理**（NaN/null/float値対応）
 - データ欠損時は測定なし期間として客観的表示
 - インタラクティブなツールチップ
@@ -564,6 +567,76 @@ npm run lint -- --debug
 ```
 
 詳細は **[ユーザーマニュアル](docs/USER_MANUAL.md#🆘-トラブル時の対処法)** を参照
+
+## 🗄️ データベース統合仕様（2025年7月実装）
+
+### ✅ 心理グラフ（VibeGraph）- Supabase統合完了
+
+#### **実装内容**
+- **データソース**: `vibe_whisper_summary`テーブルから直接取得
+- **環境変数**: `VITE_DATA_SOURCE=supabase`で制御
+- **エンドポイント**: `/api/proxy/emotion-timeline-supabase/:deviceId/:date`
+- **時間軸**: サーバー側で00:00〜23:30まで30分刻み48ポイントを自動生成
+
+#### **データベーステーブル構造**
+```sql
+create table vibe_whisper_summary (
+  device_id         text not null,
+  date              date not null,
+  vibe_scores       jsonb,      -- 48個のスコア配列（null混在可）
+  average_score     double precision,
+  positive_hours    double precision,
+  negative_hours    double precision,
+  neutral_hours     double precision,
+  insights          jsonb,      -- ["〜だった", "〜と考えられる", ...]
+  vibe_changes      jsonb,      -- [{ time, event, score }, ...]
+  processed_at      timestamp with time zone,
+  processing_log    jsonb,
+  primary key (device_id, date)
+);
+```
+
+#### **データ変換フロー**
+1. **データベース**: `vibe_whisper_summary`からデバイスID・日付で検索
+2. **サーバー処理**: 
+   - `timePoints`配列を動的生成（00:00, 00:30, ..., 23:30）
+   - `vibe_scores` → `emotionScores`
+   - `vibe_changes` → `emotionChanges`
+3. **フロントエンド**: Chart.jsで可視化（nullポイントは途切れ表示）
+
+### ⚠️ 今後の統合予定
+
+#### **行動グラフ（BehaviorGraph）**
+- **現状**: Vault API経由でSEDサマリーデータを取得
+- **予定**: Supabaseテーブルに移行
+- **対象エンドポイント**: `/api/proxy/sed-summary/:deviceId/:date`
+
+#### **感情グラフ（EmotionGraph）**
+- **現状**: Vault API経由でOpenSMILEサマリーデータを取得
+- **予定**: Supabaseテーブルに移行
+- **対象エンドポイント**: `/api/proxy/opensmile-summary/:deviceId/:date`
+
+#### **統合順序**
+1. ✅ **心理グラフ** - Supabase統合完了（2025年7月7日）
+2. 🔄 **行動グラフ** - 次回対応予定
+3. 🔄 **感情グラフ** - 最終対応予定
+
+### 🔧 技術仕様詳細
+
+#### **useVaultAPIフック改修**
+- パラメータ名を`userId`から`deviceId`に統一
+- 環境変数による動的エンドポイント切り替え
+- Supabaseモード時は専用エンドポイントを使用
+
+#### **サーバー側実装**
+- Express.jsに新エンドポイント追加
+- Supabaseクライアント統合
+- データ形式変換ロジック実装
+
+#### **コンポーネント改修**
+- `EmotionTimeline.jsx`（VibeGraph）をdeviceIdベースに変更
+- プロップ名統一（`userId` → `deviceId`）
+- データ表示ロジックはそのまま維持
 
 ## 📈 今後の改善予定
 
