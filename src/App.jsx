@@ -1,7 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
-import Admin from "./pages/Admin";
-import UserDetail from "./pages/UserDetail";
 import Notifications from "./pages/Notifications";
 import LoginForm from "./components/auth/LoginForm";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
@@ -43,16 +41,6 @@ function AppContent() {
         <Route path="/dashboard/device" element={
           <ProtectedRoute>
             <Dashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin" element={
-          <ProtectedRoute>
-            <Admin />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/user/:userId" element={
-          <ProtectedRoute>
-            <UserDetail />
           </ProtectedRoute>
         } />
         <Route path="/notifications/:userId" element={

@@ -62,46 +62,10 @@ export const getUserNotifications = async (userId) => {
   return service.getUserNotifications(userId);
 };
 
-// ユーザーディレクトリを作成する
-export const createUserDirectory = async (userId) => {
-  const service = await getDataService();
-  return service.createUserDirectory(userId);
-};
-
-// 新規ユーザーを作成する
-export const createUser = async (userData) => {
-  const service = await getDataService();
-  return service.createUser(userData);
-};
-
-// ユーザー情報を更新する
-export const updateUser = async (userId, userData) => {
-  const service = await getDataService();
-  return service.updateUser(userId, userData);
-};
-
-// ユーザーを削除する
-export const deleteUser = async (userId) => {
-  const service = await getDataService();
-  return service.deleteUser(userId);
-};
-
-// 特定のデータタイプを指定して日ごとのデータを保存する
-export const saveLogData = async (userId, date, dataType, data, append = false) => {
-  const service = await getDataService();
-  return service.saveLogData(userId, date, dataType, data, append);
-};
-
 // 月次データを取得する
 export const getMonthlyData = async (userId, year, month) => {
   const service = await getDataService();
   return service.getMonthlyData(userId, year, month);
-};
-
-// 通知を一括送信する
-export const broadcastNotification = async (notificationData) => {
-  const service = await getDataService();
-  return service.broadcastNotification(notificationData);
 };
 
 // SEDサマリーデータを取得する
@@ -126,6 +90,4 @@ export const getEventLogsData = async (...args) => {
 //   return service.getEmotionDistributionData(...args);
 // };
 
-// 環境情報もエクスポート
-export const isDev = isDevelopment;
-export const isProd = !isDevelopment; 
+ 
