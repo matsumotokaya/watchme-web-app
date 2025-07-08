@@ -261,6 +261,79 @@ app.get('/api/proxy/emotion-timeline-supabase/:deviceId/:date', async (req, res)
   }
 });
 
+// Supabaseからsed-summaryデータを取得する新しいエンドポイント
+app.get('/api/proxy/sed-summary-supabase/:deviceId/:date', async (req, res) => {
+  const { deviceId, date } = req.params;
+  
+  console.log(`[PROXY] SED Summary from Supabase: device=${deviceId}, date=${date}`);
+  try {
+    // behavior_summaryテーブルからデータを取得
+    const { data: summaryData, error } = await supabase
+      .from('behavior_summary')
+      .select('*')
+      .eq('device_id', deviceId)
+      .eq('date', date)
+      .single();
+    
+    if (error) {
+      console.log(`[PROXY] Supabase Error:`, error);
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'この日付のSEDデータは見つかりません' });
+      }
+      return res.status(500).json({ error: 'データベースエラーが発生しました' });
+    }
+    
+    if (!summaryData) {
+      return res.status(404).json({ error: 'この日付のSEDデータは見つかりません' });
+    }
+    
+    // Supabaseの新形式からVault API形式に変換
+    const convertToVaultFormat = (supabaseData) => {
+      const { summary_ranking, time_blocks } = supabaseData;
+      
+      // time_blocksを文字列配列形式に変換
+      const convertedTimeBlocks = {};
+      
+      // 48スロット（00-00から23-30まで）を生成
+      for (let hour = 0; hour < 24; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const timeSlot = `${hour.toString().padStart(2, '0')}-${minute.toString().padStart(2, '0')}`;
+          
+          if (time_blocks[timeSlot] === null) {
+            // データなしの場合
+            convertedTimeBlocks[timeSlot] = ["データなし"];
+          } else if (Array.isArray(time_blocks[timeSlot])) {
+            // データありの場合：[{"event": "Speech", "count": 3}] → ["Speech 3回"]
+            convertedTimeBlocks[timeSlot] = time_blocks[timeSlot].map(item => 
+              `${item.event} ${item.count}回`
+            );
+          } else {
+            // 予期しない形式の場合
+            convertedTimeBlocks[timeSlot] = ["データなし"];
+          }
+        }
+      }
+      
+      return {
+        date: supabaseData.date,
+        summary_ranking: summary_ranking || [],
+        time_blocks: convertedTimeBlocks,
+        total_events: summary_ranking ? summary_ranking.reduce((sum, item) => sum + item.count, 0) : 0,
+        analysis_period: "24 hours",
+        generated_at: new Date().toISOString()
+      };
+    };
+    
+    const vaultFormatData = convertToVaultFormat(summaryData);
+    
+    console.log(`[PROXY] Supabase SED data converted to Vault format successfully`);
+    res.json(vaultFormatData);
+  } catch (error) {
+    console.log(`[PROXY] SED Summary from Supabase取得で問題が発生:`, error);
+    res.status(500).json({ error: 'データ取得中に予期しないエラーが発生しました。' });
+  }
+});
+
 app.get('/api/proxy/opensmile-summary/:userId/:date', async (req, res) => {
   const { userId, date } = req.params;
   const timestamp = new Date().getTime();

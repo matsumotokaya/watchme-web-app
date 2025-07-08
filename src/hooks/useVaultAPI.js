@@ -77,6 +77,10 @@ const useVaultAPI = (endpoint, deviceId, selectedDate) => {
         // Supabaseモードの場合は専用エンドポイントを使用
         url = `/api/proxy/emotion-timeline-supabase/${deviceId}/${selectedDate}`;
         console.log(`🔄 Supabase経由で${endpoint}データを取得中...`);
+      } else if (dataSource === 'supabase' && endpoint === 'sed-summary') {
+        // Supabaseモード（SEDサマリー）
+        url = `/api/proxy/sed-summary-supabase/${deviceId}/${selectedDate}`;
+        console.log(`🔄 Supabase経由で${endpoint}データを取得中...`);
       } else {
         // Vaultモード（デフォルト）
         url = `/api/proxy/${endpoint}/${deviceId}/${selectedDate}`;

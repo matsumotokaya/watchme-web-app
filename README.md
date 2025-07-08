@@ -12,7 +12,7 @@ WatchMeは、音声メタ情報から「こころ」を可視化するツール�
 
 ### ✨ 主要機能
 - 💭 **心理グラフ（VibeGraph）**: ✅ **【Supabase統合完了】** 心理スコアの時系列グラフ表示（-100〜+100、30分間隔48ポイント）
-- 🎵 **行動グラフ（BehaviorGraph）**: 音響イベント分析・SED（Sound Event Detection）による行動パターン可視化 ⚠️ **Vault API使用中**
+- 🎵 **行動グラフ（BehaviorGraph）**: ✅ **【Supabase統合完了】** 音響イベント分析・SED（Sound Event Detection）による行動パターン可視化
 - 🎭 **感情グラフ（EmotionGraph）**: Plutchik 8感情分類グラフ（OpenSMILE音声特徴量による感情分析） ⚠️ **Vault API使用中**
 - 🔐 **Supabase認証**: メール/パスワードによる安全なログイン機能
 - 📱 **デバイスベース管理**: ユーザーアカウントに複数のデバイス（device_id）を関連付け
@@ -83,7 +83,8 @@ npm run server       # バックエンド（ポート3001）
 
 ### ダッシュボード
 - **心理グラフ（30分間隔48ポイント）**: ✅ **Supabaseデータベース統合完了**
-- **行動グラフ・感情グラフ**: EC2 Vault API（https://api.hey-watch.me）からのデータ取得 ⚠️ **次回統合予定**
+- **行動グラフ（SED分析）**: ✅ **Supabaseデータベース統合完了** - behavior_summaryテーブルから音響イベントデータを取得
+- **感情グラフ**: EC2 Vault API（https://api.hey-watch.me）からのデータ取得 ⚠️ **次回統合予定**
 - **フロントエンド側でのデータ前処理**（NaN/null/float値対応）
 - データ欠損時は測定なし期間として客観的表示
 - インタラクティブなツールチップ
@@ -117,19 +118,55 @@ watchme_v8/
 └── 📜 README.md              # プロジェクト説明
 ```
 
-**データフロー**:
-1. **EC2 Vault API** → `https://api.hey-watch.me/api/users/{deviceId}/logs/{date}/emotion-timeline`
-2. **ローカルキャッシュ** → `data_accounts/{deviceId}/logs/{date}.json`
+**データフロー（v8.2統合版）**:
+1. **Supabaseデータベース** → `vibe_whisper_summary`（心理グラフ）、`behavior_summary`（行動グラフ）
+2. **EC2 Vault API** → `https://api.hey-watch.me/api/users/{deviceId}/logs/{date}/opensmile-summary`（感情グラフ）
 3. **フロントエンド表示** → React コンポーネント
 
 ### 🔧 技術スタック
 - **フロントエンド**: React 18.3.1, Vite 6.3.5, Tailwind CSS 4.1.10, Chart.js 4.4.9
 - **バックエンド**: Express.js 4.21.2, Node.js
-- **データソース**: EC2 Vault API（WatchMe Vault API）上のファイルベースJSON（/home/ubuntu/data/data_accounts/）
+- **データベース**: ✅ **Supabase PostgreSQL** (vibe_whisper_summary, behavior_summary)
+- **レガシーAPI**: ⚠️ EC2 Vault API（感情グラフのみ）
 - **データ形式**: 30分間隔48ポイント（1日24時間）
 - **データ前処理**: フロントエンド側でNaN/null/float値の自動補正
 - **UI/UX**: モバイルファースト, レスポンシブデザイン, ライフログツール
 - **デプロイ**: 静的ファイル + Node.js サーバー
+
+## 🗄️ データベース統合状況
+
+### ✅ Supabase統合完了
+
+#### **心理グラフ（VibeGraph）**
+- **テーブル**: `vibe_whisper_summary`
+- **エンドポイント**: `/api/proxy/emotion-timeline-supabase/:deviceId/:date`
+- **データ形式**: 30分間隔48ポイントの心理スコア（-100〜+100）
+
+#### **行動グラフ（BehaviorGraph）**  
+- **テーブル**: `behavior_summary`
+- **エンドポイント**: `/api/proxy/sed-summary-supabase/:deviceId/:date`
+- **データ形式**: 音響イベントランキング + 時間別イベント（48スロット）
+
+**データ構造例**:
+```json
+{
+  "summary_ranking": [
+    {"event": "Speech", "count": 42},
+    {"event": "Silence", "count": 38}
+  ],
+  "time_blocks": {
+    "00-00": [{"event": "Speech", "count": 3}],
+    "00-30": null
+  }
+}
+```
+
+### ⚠️ レガシーAPI（移行予定）
+
+#### **感情グラフ（EmotionGraph）**
+- **API**: EC2 Vault API（https://api.hey-watch.me）
+- **エンドポイント**: `/api/proxy/opensmile-summary/:userId/:date`
+- **データ形式**: Plutchik 8感情分類
 
 ---
 
