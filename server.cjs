@@ -334,6 +334,47 @@ app.get('/api/proxy/sed-summary-supabase/:deviceId/:date', async (req, res) => {
   }
 });
 
+// Supabaseからopensmile-summaryデータを取得する新しいエンドポイント
+app.get('/api/proxy/opensmile-summary-supabase/:deviceId/:date', async (req, res) => {
+  const { deviceId, date } = req.params;
+  
+  console.log(`[PROXY] OpenSMILE Summary from Supabase: device=${deviceId}, date=${date}`);
+  try {
+    // emotion_opensmile_summaryテーブルからデータを取得
+    const { data: summaryData, error } = await supabase
+      .from('emotion_opensmile_summary')
+      .select('*')
+      .eq('device_id', deviceId)
+      .eq('date', date)
+      .single();
+    
+    if (error) {
+      console.log(`[PROXY] Supabase query error:`, error);
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ 
+          error: 'この日付の感情グラフデータは見つかりません',
+          date: date 
+        });
+      }
+      throw error;
+    }
+    
+    // EmotionGraph.jsxが期待する形式に変換
+    // emotion_graphフィールドのJSONBデータをそのまま使用
+    const opensmileData = {
+      date: summaryData.date,
+      emotion_graph: summaryData.emotion_graph || [],
+      device_id: summaryData.device_id,
+      created_at: summaryData.created_at
+    };
+    
+    res.json(opensmileData);
+  } catch (error) {
+    console.log(`[PROXY] OpenSMILE Summary from Supabase取得で問題が発生:`, error);
+    res.status(500).json({ error: '感情グラフデータ取得中に予期しないエラーが発生しました。' });
+  }
+});
+
 app.get('/api/proxy/opensmile-summary/:userId/:date', async (req, res) => {
   const { userId, date } = req.params;
   const timestamp = new Date().getTime();

@@ -6,6 +6,27 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.1.7-cyan)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth-green)](https://supabase.com/)
 
+## 🆕 最新アップデート (2025-07-10)
+
+### **感情グラフのSupabase統合完了** 🎉
+- ✅ 感情グラフ（OpenSMILE）がSupabaseの`emotion_opensmile_summary`テーブルからデータを取得するように対応
+- ✅ 3つのグラフ（心理・行動・感情）すべてがSupabaseデータベースに統合完了
+- ✅ Vault API依存から完全に脱却し、より高速で安定したデータ取得を実現
+
+#### **実装内容**
+1. **Supabaseプロキシエンドポイント追加** (`server.cjs`)
+   - `/api/proxy/opensmile-summary-supabase/:deviceId/:date` エンドポイントを追加
+   - `emotion_opensmile_summary`テーブルからJSONBデータを取得
+   - エラーハンドリング（404：データなし、500：サーバーエラー）
+
+2. **useVaultAPIフック拡張** (`src/hooks/useVaultAPI.js`)
+   - `opensmile-summary`エンドポイントのSupabase対応を追加
+   - 環境変数`VITE_DATA_SOURCE=supabase`でSupabaseモードに切り替え
+
+3. **データ形式互換性**
+   - Supabaseの`emotion_graph`JSONB配列をそのまま利用
+   - 既存のEmotionGraph.jsxコンポーネントと完全互換
+
 ## 🎯 プロジェクト概要
 
 WatchMeは、音声メタ情報から「こころ」を可視化するツールです。心理グラフ、行動グラフ、感情グラフから構成され、認知特性やメンタルヘルスを定量的に計るために用いられます。**Supabase認証システム**を統合したデバイスベースのデータ収集により、ユーザーアカウントと測定デバイスを柔軟に関連付けて、モバイルファースト設計のダッシュボードで日々の活動を客観的に表示します。
@@ -13,7 +34,7 @@ WatchMeは、音声メタ情報から「こころ」を可視化するツール�
 ### ✨ 主要機能
 - 💭 **心理グラフ（VibeGraph）**: ✅ **【Supabase統合完了】** 心理スコアの時系列グラフ表示（-100〜+100、30分間隔48ポイント）
 - 🎵 **行動グラフ（BehaviorGraph）**: ✅ **【Supabase統合完了】** 音響イベント分析・SED（Sound Event Detection）による行動パターン可視化
-- 🎭 **感情グラフ（EmotionGraph）**: Plutchik 8感情分類グラフ（OpenSMILE音声特徴量による感情分析） ⚠️ **Vault API使用中**
+- 🎭 **感情グラフ（EmotionGraph）**: ✅ **【Supabase統合完了】** Plutchik 8感情分類グラフ（OpenSMILE音声特徴量による感情分析）
 - 🔐 **Supabase認証**: メール/パスワードによる安全なログイン機能
 - 📱 **デバイスベース管理**: ユーザーアカウントに複数のデバイス（device_id）を関連付け
 - 👤 **プロフィール**: ユーザー情報と設定管理
@@ -197,10 +218,12 @@ watchme_v8/
 - ユーザーは複数のデバイスを管理でき、デバイス選択でグラフを切り替え可能
 - APIエンドポイントパスの`{userId}`部分には実際は`device_id`が渡されます（歴史的経緯による命名）
 
-#### **実装完了内容（2025年6月30日）**
+#### **実装完了内容（2025年7月10日 - Supabase統合）**
 - **実装場所**: `src/components/dashboard/EmotionGraph.jsx`
-- **データソース**: Vault API `/api/users/{deviceId}/logs/{date}/opensmile-summary` からリアルタイム取得
-- **API連携**: ✅ 完全実装（useVaultAPIフック使用）
+- **データソース**: 
+  - Supabaseモード: `emotion_opensmile_summary`テーブルからデータ取得
+  - Vaultモード: Vault API `/api/users/{deviceId}/logs/{date}/opensmile-summary` （従来通り）
+- **API連携**: ✅ 完全実装（useVaultAPIフック使用、Supabase対応済み）
 - **動作**: OpenSMILE音声特徴量解析による実際の感情データを表示
 
 #### **実装済み機能**
@@ -236,6 +259,7 @@ watchme_v8/
 
 `server.cjs`に以下のプロキシエンドポイントが実装されています。フロントエンドからはこちらを呼び出してください。
 
+##### Vault API モード（従来）
 -   **心理グラフ (感情タイムライン)**:
     -   `GET /api/proxy/emotion-timeline/:deviceId/:date`
     -   転送先: `https://api.hey-watch.me/api/users/:deviceId/logs/:date/emotion-timeline`
@@ -247,6 +271,19 @@ watchme_v8/
 -   **感情グラフ (OpenSMILEサマリー)**:
     -   `GET /api/proxy/opensmile-summary/:deviceId/:date`
     -   転送先: `https://api.hey-watch.me/api/users/:deviceId/logs/:date/opensmile-summary`
+
+##### Supabase モード（推奨）
+-   **心理グラフ (感情タイムライン)**:
+    -   `GET /api/proxy/emotion-timeline-supabase/:deviceId/:date`
+    -   データソース: `vibe_whisper_summary`テーブル
+
+-   **行動グラフ (SEDサマリー)**:
+    -   `GET /api/proxy/sed-summary-supabase/:deviceId/:date`
+    -   データソース: `behavior_summary`テーブル
+
+-   **感情グラフ (OpenSMILEサマリー)** 🆕:
+    -   `GET /api/proxy/opensmile-summary-supabase/:deviceId/:date`
+    -   データソース: `emotion_opensmile_summary`テーブル
 
 #### 謎：なぜ以前は心理グラフが動いたのか？
 
