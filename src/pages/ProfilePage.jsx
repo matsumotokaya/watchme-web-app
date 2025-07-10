@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageLayout from '../layouts/PageLayout';
 import { useAuth } from '../hooks/useAuth';
+import AvatarUploader from '../components/profile/AvatarUploader';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, userProfile, signOut } = useAuth();
   const [devices, setDevices] = useState([]);
-  const [avatarUrl, setAvatarUrl] = useState('/default-avatar.png');
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [showAvatarUploader, setShowAvatarUploader] = useState(false);
 
   useEffect(() => {
     // デバイス情報の取得
@@ -28,8 +30,13 @@ const ProfilePage = () => {
   };
 
   const handleAvatarClick = () => {
-    // 将来的なアバター変更機能用のプレースホルダー
-    console.log('アバター変更機能は今後実装予定です');
+    setShowAvatarUploader(true);
+  };
+
+  const handleAvatarChange = (newAvatarUrl) => {
+    setAvatarUrl(newAvatarUrl);
+    setShowAvatarUploader(false);
+    // 現時点ではメモリ上のみ（リロードで消える）
   };
 
   return (
@@ -40,13 +47,37 @@ const ProfilePage = () => {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex flex-col items-center">
               {/* アバター */}
-              <div 
-                className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center mb-4 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={handleAvatarClick}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+              <div className="relative group mb-4">
+                <div 
+                  className={`w-24 h-24 rounded-full flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity overflow-hidden ${
+                    avatarUrl ? '' : 'bg-gray-300'
+                  }`}
+                  onClick={handleAvatarClick}
+                >
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt="アバター" 
+                      className="w-24 h-24 rounded-full object-cover"
+                    />
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  )}
+                </div>
+                {/* カメラアイコンオーバーレイ */}
+                {!avatarUrl && (
+                  <div 
+                    className="absolute inset-0 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center cursor-pointer transition-all"
+                    onClick={handleAvatarClick}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                )}
               </div>
               
               {/* ユーザー名 */}
@@ -99,6 +130,30 @@ const ProfilePage = () => {
           </button>
         </div>
       </div>
+
+      {/* アバターアップローダーモーダル */}
+      {showAvatarUploader && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">アバター画像を変更</h3>
+              <button
+                onClick={() => setShowAvatarUploader(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <AvatarUploader 
+              currentAvatar={avatarUrl}
+              onAvatarChange={handleAvatarChange}
+              key={showAvatarUploader ? 'uploader' : 'closed'}
+            />
+          </div>
+        </div>
+      )}
     </PageLayout>
   );
 };
