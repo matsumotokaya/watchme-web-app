@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageLayout from '../layouts/PageLayout';
 import { useAuth } from '../hooks/useAuth';
+import { useAvatar } from '../hooks/useAvatar';
 import AvatarUploader from '../components/profile/AvatarUploader';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, userProfile, signOut } = useAuth();
+  const { avatarUrl, uploadAvatar, loading: avatarLoading } = useAvatar();
   const [devices, setDevices] = useState([]);
-  const [avatarUrl, setAvatarUrl] = useState(null);
   const [showAvatarUploader, setShowAvatarUploader] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     // デバイス情報の取得
@@ -34,9 +36,21 @@ const ProfilePage = () => {
   };
 
   const handleAvatarChange = (newAvatarUrl) => {
-    setAvatarUrl(newAvatarUrl);
-    setShowAvatarUploader(false);
-    // 現時点ではメモリ上のみ（リロードで消える）
+    // ローカルでプレビュー表示（一時的）
+  };
+
+  const handleUploadComplete = async (croppedImageUrl) => {
+    setIsUploading(true);
+    try {
+      // Supabase Storageにアップロード
+      await uploadAvatar(croppedImageUrl);
+      setShowAvatarUploader(false);
+    } catch (error) {
+      console.error('アップロードエラー:', error);
+      alert('画像のアップロードに失敗しました');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -54,7 +68,9 @@ const ProfilePage = () => {
                   }`}
                   onClick={handleAvatarClick}
                 >
-                  {avatarUrl ? (
+                  {avatarLoading ? (
+                    <div className="animate-pulse bg-gray-300 w-24 h-24 rounded-full" />
+                  ) : avatarUrl ? (
                     <img 
                       src={avatarUrl} 
                       alt="アバター" 
@@ -67,17 +83,15 @@ const ProfilePage = () => {
                   )}
                 </div>
                 {/* カメラアイコンオーバーレイ */}
-                {!avatarUrl && (
-                  <div 
-                    className="absolute inset-0 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center cursor-pointer transition-all"
-                    onClick={handleAvatarClick}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                )}
+                <div 
+                  className="absolute inset-0 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center cursor-pointer transition-all"
+                  onClick={handleAvatarClick}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
               </div>
               
               {/* ユーザー名 */}
@@ -149,8 +163,17 @@ const ProfilePage = () => {
             <AvatarUploader 
               currentAvatar={avatarUrl}
               onAvatarChange={handleAvatarChange}
+              onUploadComplete={handleUploadComplete}
               key={showAvatarUploader ? 'uploader' : 'closed'}
             />
+            {isUploading && (
+              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                  <p className="text-gray-600">アップロード中...</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

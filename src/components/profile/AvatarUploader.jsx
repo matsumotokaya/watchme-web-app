@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import Cropper from 'react-easy-crop';
 import imageCompression from 'browser-image-compression';
 
-const AvatarUploader = ({ currentAvatar, onAvatarChange }) => {
+const AvatarUploader = ({ currentAvatar, onAvatarChange, onUploadComplete }) => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [showCropper, setShowCropper] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -73,12 +73,19 @@ const AvatarUploader = ({ currentAvatar, onAvatarChange }) => {
     try {
       const croppedImageUrl = await getCroppedImg(selectedImage, croppedAreaPixels);
       onAvatarChange(croppedImageUrl); // 親コンポーネントに通知
+      
+      // Supabase Storageへのアップロードを親コンポーネントに委譲
+      if (onUploadComplete) {
+        await onUploadComplete(croppedImageUrl);
+      }
+      
       setShowCropper(false);
       setSelectedImage(null);
     } catch (e) {
       console.error('クロップエラー:', e);
+      alert('画像の処理に失敗しました');
     }
-  }, [selectedImage, croppedAreaPixels, onAvatarChange]);
+  }, [selectedImage, croppedAreaPixels, onAvatarChange, onUploadComplete]);
 
   // 画像のクロップ処理
   const getCroppedImg = async (imageSrc, pixelCrop) => {
