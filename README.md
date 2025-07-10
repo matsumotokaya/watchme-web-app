@@ -32,13 +32,24 @@
 WatchMeは、音声メタ情報から「こころ」を可視化するツールです。心理グラフ、行動グラフ、感情グラフから構成され、認知特性やメンタルヘルスを定量的に計るために用いられます。**Supabase認証システム**を統合したデバイスベースのデータ収集により、ユーザーアカウントと測定デバイスを柔軟に関連付けて、モバイルファースト設計のダッシュボードで日々の活動を客観的に表示します。
 
 ### ✨ 主要機能
-- 💭 **心理グラフ（VibeGraph）**: ✅ **【Supabase統合完了】** 心理スコアの時系列グラフ表示（-100〜+100、30分間隔48ポイント）
-- 🎵 **行動グラフ（BehaviorGraph）**: ✅ **【Supabase統合完了】** 音響イベント分析・SED（Sound Event Detection）による行動パターン可視化
-- 🎭 **感情グラフ（EmotionGraph）**: ✅ **【Supabase統合完了】** Plutchik 8感情分類グラフ（OpenSMILE音声特徴量による感情分析）
-- 🔐 **Supabase認証**: メール/パスワードによる安全なログイン機能
-- 📱 **デバイスベース管理**: ユーザーアカウントに複数のデバイス（device_id）を関連付け
-- 👤 **プロフィール**: ユーザー情報と設定管理
-- 📢 **通知システム**: リアルタイム通知機能 ⚠️ **開発中** - 右上の通知アイコンは現在動作しません
+
+#### 🎯 **コア分析機能** - 全て実装完了
+- 💭 **心理グラフ（VibeGraph）**: ✅ **完全実装** 心理スコアの時系列表示（-100〜+100、30分間隔48ポイント）
+- 🎵 **行動グラフ（BehaviorGraph）**: ✅ **完全実装** 音響イベント分析（SED）による行動パターン可視化
+- 🎭 **感情グラフ（EmotionGraph）**: ✅ **Supabase統合完了** Plutchik 8感情分類による感情分析グラフ（OpenSMILE音声特徴量）
+- 📊 **統合ダッシュボード**: 3つのグラフを統合した包括的な心理・行動・感情分析
+
+#### 🔐 **認証・ユーザー管理** - Supabase統合
+- 🔑 **認証システム**: メール/パスワード認証、セッション管理、自動ルート保護
+- 👤 **プロフィール管理**: ユーザー情報表示・設定管理
+- 📱 **デバイス管理**: 1ユーザー複数デバイス対応、UUID形式デバイス登録
+- 🔄 **リアルタイム切り替え**: デバイス選択によるグラフデータ即座更新
+
+#### 🎨 **ユーザーエクスペリエンス**
+- 📱 **モバイルファースト設計**: レスポンシブUI、タッチ操作最適化
+- 🌅 **日付ナビゲーション**: 直感的な日付選択・履歴閲覧
+- ⚡ **高速データ取得**: Supabaseダイレクト接続による高速表示
+- 🛡️ **堅牢なエラーハンドリング**: NaN値自動正規化、データ欠損時の適切な表示
 
 ## 🚀 クイックスタート
 
@@ -65,35 +76,12 @@ NODE_ENV=development
 VITE_DATA_SOURCE=supabase
 ```
 
-#### **2. 依存関係インストール**
+#### **2. 起動**
+
 ```bash
-# React 18対応のため legacy-peer-deps フラグを使用
+# 依存関係インストール & 開発サーバー起動
 npm install --legacy-peer-deps
-```
-
-#### **🚨 重要: React 18 互換性対応**
-このプロジェクトは **React 18.3.1** を使用しています。React 19との互換性問題により、以下の対応を実施済み：
-
-- `react-swipeable-views@0.14.0` の互換性確保
-- Vite 6.3.5 との安定した動作環境
-- 依存関係の競合解決（`--legacy-peer-deps` 使用）
-
-### ⚡ 起動方法
-
-#### **自動起動（推奨）**
-```bash
-# 開発環境（フロントエンド + バックエンド同時起動）
 ./start-dev.sh
-
-# 本番環境
-./start-prod.sh
-```
-
-#### **手動起動**
-```bash
-# 開発サーバー起動
-npm run dev          # フロントエンド（ポート5173）
-npm run server       # バックエンド（ポート3001）
 ```
 
 ### 🌐 アクセス
@@ -105,7 +93,7 @@ npm run server       # バックエンド（ポート3001）
 ### ダッシュボード
 - **心理グラフ（30分間隔48ポイント）**: ✅ **Supabaseデータベース統合完了**
 - **行動グラフ（SED分析）**: ✅ **Supabaseデータベース統合完了** - behavior_summaryテーブルから音響イベントデータを取得
-- **感情グラフ**: EC2 Vault API（https://api.hey-watch.me）からのデータ取得 ⚠️ **次回統合予定**
+- **感情グラフ（OpenSMILE分析）**: ✅ **Supabaseデータベース統合完了** - emotion_opensmile_summaryテーブルからPlutchik 8感情データを取得
 - **フロントエンド側でのデータ前処理**（NaN/null/float値対応）
 - データ欠損時は測定なし期間として客観的表示
 - インタラクティブなツールチップ
@@ -139,16 +127,14 @@ watchme_v8/
 └── 📜 README.md              # プロジェクト説明
 ```
 
-**データフロー（v8.2統合版）**:
-1. **Supabaseデータベース** → `vibe_whisper_summary`（心理グラフ）、`behavior_summary`（行動グラフ）
-2. **EC2 Vault API** → `https://api.hey-watch.me/api/users/{deviceId}/logs/{date}/opensmile-summary`（感情グラフ）
-3. **フロントエンド表示** → React コンポーネント
+**データフロー（v8.3統合版）**:
+1. **Supabaseデータベース** → `vibe_whisper_summary`（心理グラフ）、`behavior_summary`（行動グラフ）、`emotion_opensmile_summary`（感情グラフ）
+2. **フロントエンド表示** → React コンポーネント
 
 ### 🔧 技術スタック
 - **フロントエンド**: React 18.3.1, Vite 6.3.5, Tailwind CSS 4.1.10, Chart.js 4.4.9
 - **バックエンド**: Express.js 4.21.2, Node.js
-- **データベース**: ✅ **Supabase PostgreSQL** (vibe_whisper_summary, behavior_summary)
-- **レガシーAPI**: ⚠️ EC2 Vault API（感情グラフのみ）
+- **データベース**: ✅ **Supabase PostgreSQL** (vibe_whisper_summary, behavior_summary, emotion_opensmile_summary)
 - **データ形式**: 30分間隔48ポイント（1日24時間）
 - **データ前処理**: フロントエンド側でNaN/null/float値の自動補正
 - **UI/UX**: モバイルファースト, レスポンシブデザイン, ライフログツール
@@ -182,12 +168,10 @@ watchme_v8/
 }
 ```
 
-### ⚠️ レガシーAPI（移行予定）
-
 #### **感情グラフ（EmotionGraph）**
-- **API**: EC2 Vault API（https://api.hey-watch.me）
-- **エンドポイント**: `/api/proxy/opensmile-summary/:userId/:date`
-- **データ形式**: Plutchik 8感情分類
+- **テーブル**: `emotion_opensmile_summary`
+- **エンドポイント**: `/api/proxy/opensmile-summary-supabase/:deviceId/:date`
+- **データ形式**: Plutchik 8感情分類（30分間隔48ポイント）
 
 ---
 
@@ -210,7 +194,7 @@ watchme_v8/
 |---------|------------------|-------------|------------------|
 | **心理グラフ** | `VibeGraph` | `src/components/dashboard/EmotionTimeline.jsx` | `/api/users/{deviceId}/logs/{date}/emotion-timeline` |
 | **行動グラフ** | `BehaviorGraph` | `src/components/dashboard/EventLogs.jsx` | `/api/users/{deviceId}/logs/{date}/sed-summary` |
-| **感情グラフ** | `EmotionGraph` | `src/components/dashboard/EmotionGraph.jsx` | `/api/users/{deviceId}/logs/{date}/opensmile-summary` |
+| **感情グラフ** | `EmotionGraph` | `src/components/dashboard/EmotionGraph.jsx` | `/api/proxy/opensmile-summary-supabase/:deviceId/:date` |
 | **デバイス管理** | `DeviceView` | `src/components/dashboard/DeviceView.jsx` | Supabase `devices` テーブル |
 
 ⚠️ **重要**: 
@@ -218,12 +202,10 @@ watchme_v8/
 - ユーザーは複数のデバイスを管理でき、デバイス選択でグラフを切り替え可能
 - APIエンドポイントパスの`{userId}`部分には実際は`device_id`が渡されます（歴史的経緯による命名）
 
-#### **実装完了内容（2025年7月10日 - Supabase統合）**
+#### **実装完了内容（2025年7月10日 - Supabase統合完了）**
 - **実装場所**: `src/components/dashboard/EmotionGraph.jsx`
-- **データソース**: 
-  - Supabaseモード: `emotion_opensmile_summary`テーブルからデータ取得
-  - Vaultモード: Vault API `/api/users/{deviceId}/logs/{date}/opensmile-summary` （従来通り）
-- **API連携**: ✅ 完全実装（useVaultAPIフック使用、Supabase対応済み）
+- **データソース**: ✅ `emotion_opensmile_summary`テーブル（Supabase統合完了）
+- **API連携**: ✅ 完全実装（useVaultAPIフック使用、opensmile-summary対応済み）
 - **動作**: OpenSMILE音声特徴量解析による実際の感情データを表示
 
 #### **実装済み機能**
@@ -238,11 +220,11 @@ watchme_v8/
 
 #### **技術仕様**
 - **データ形式**: 30分間隔48ポイント（1日24時間）
-- **プロキシ経由**: `server.cjs`の`/api/proxy/opensmile-summary`エンドポイント
+- **プロキシ経由**: `server.cjs`の`/api/proxy/opensmile-summary-supabase`エンドポイント
 - **グラフライブラリ**: Chart.js（Line Chart）
 - **エラー処理**: 他グラフと統一されたNoDataMessage表示
 
-**🎉 3つのグラフ機能がすべて完成し、統一されたダッシュボードが実現されました！**
+**🎉 3つのグラフ機能がすべて完成し、Supabase統合が完了した統一ダッシュボードが実現されました！**
 
 ## ⚠️【重要】開発者向けガイドライン
 
@@ -291,47 +273,48 @@ watchme_v8/
 
 CORSエラーは、**キャッシュされていない新しいデータ**を**フロントエンドから直接EC2 Vault APIに**取得しようとした際に初めて表面化しました。この動作は混乱を招くため、**「データ取得は必ずプロキシを介する」**というルールに統一しています。
 
-**現在の状況（2025年6月30日更新）:**
-- **心理グラフ（感情タイムライン）**: プロキシ経由でデータ取得 ✅
-- **行動グラフ（SEDサマリー）**: プロキシ経由でデータ取得 ✅
-- **感情グラフ（OpenSMILEサマリー）**: プロキシ経由でデータ取得 ✅
+**現在の状況（2025年7月10日更新）:**
+- **心理グラフ（感情タイムライン）**: Supabase統合完了 ✅
+- **行動グラフ（SEDサマリー）**: Supabase統合完了 ✅
+- **感情グラフ（OpenSMILEサマリー）**: Supabase統合完了 ✅
 
-3つのグラフコンポーネントがすべて統一されたプロキシパターンを使用し、CORSエラーを回避しています。
+3つのグラフコンポーネントがすべて統一されたSupabaseデータベース統合を実現しています。
 
-### ✅ Vault API構造統一完了
+### ✅ Supabaseデータベース統合完了
 
-**Vault APIの構造が統一されました！** 以下の詳細をご確認ください：
+**3つのグラフすべてでSupabaseデータベース統合が完了しました！** 以下の詳細をご確認ください：
 
-#### **統一後の実装状況**
+#### **統合完了状況**
 
-**✅ 正式API形式（統一完了）**:
-- **心理グラフ（感情タイムライン）**: `GET /api/users/{deviceId}/logs/{date}/emotion-timeline`
-- **行動グラフ（SEDサマリー）**: `GET /api/users/{deviceId}/logs/{date}/sed-summary`
-- **感情グラフ（OpenSMILEサマリー）**: `GET /api/users/{deviceId}/logs/{date}/opensmile-summary` 🆕
+**✅ Supabaseテーブル構成（統合完了）**:
+- **心理グラフ（感情タイムライン）**: `vibe_whisper_summary`テーブル
+- **行動グラフ（SEDサマリー）**: `behavior_summary`テーブル
+- **感情グラフ（OpenSMILEサマリー）**: `emotion_opensmile_summary`テーブル 🆕
 
 3つすべて以下の特徴を持ちます：
-- 専用のFastAPIエンドポイントで実装
-- JSONレスポンス、適切なエラーハンドリング
-- 一貫したWebダッシュボード向けAPI設計
+- PostgreSQL JSONBデータストレージ
+- Supabaseプロキシエンドポイントでアクセス
+- 高速なデータベース直接接続
+- 統一されたエラーハンドリング
 
-#### **改善された構造**
+#### **データベース統合構造**
 
 ```
-✅ 統一API：全てのダッシュボードデータが正式API形式
-/api/users/{deviceId}/logs/{date}/emotion-timeline    # 心理グラフ（感情タイムライン）
-/api/users/{deviceId}/logs/{date}/sed-summary         # 行動グラフ（SEDサマリー）
-/api/users/{deviceId}/logs/{date}/opensmile-summary   # 感情グラフ（OpenSMILEサマリー）🆕
+✅ Supabase統合：全てのダッシュボードデータがデータベース管理
+/api/proxy/emotion-timeline-supabase/:deviceId/:date    # 心理グラフ
+/api/proxy/sed-summary-supabase/:deviceId/:date         # 行動グラフ  
+/api/proxy/opensmile-summary-supabase/:deviceId/:date   # 感情グラフ🆕
 
-📁 別用途：ファイル管理・デバッグ用途  
-/status                                           # HTMLファイル一覧
-/download-file?file_path={path}                   # 個別ファイルダウンロード
-/view-file?file_path={path}                       # JSONファイル内容表示
+📊 データベーステーブル
+- vibe_whisper_summary         # 心理スコア（30分間隔48ポイント）
+- behavior_summary            # 音響イベントランキング・時系列
+- emotion_opensmile_summary   # Plutchik 8感情分類データ
 ```
 
-#### **統一により解決された問題**
+#### **Supabase統合により実現された改善**
 
-1. **設計の一貫性確保** ✅
-   - 感情タイムライン・SEDサマリー共に正式API実装
+1. **パフォーマンス向上** ✅
+   - データベース直接接続による高速取得
 
 2. **保守性の向上** ✅
    - 両APIに統一されたバリデーション・エラーハンドリング
@@ -722,22 +705,6 @@ create table vibe_whisper_summary (
    - `vibe_changes` → `emotionChanges`
 3. **フロントエンド**: Chart.jsで可視化（nullポイントは途切れ表示）
 
-### ⚠️ 今後の統合予定
-
-#### **行動グラフ（BehaviorGraph）**
-- **現状**: Vault API経由でSEDサマリーデータを取得
-- **予定**: Supabaseテーブルに移行
-- **対象エンドポイント**: `/api/proxy/sed-summary/:deviceId/:date`
-
-#### **感情グラフ（EmotionGraph）**
-- **現状**: Vault API経由でOpenSMILEサマリーデータを取得
-- **予定**: Supabaseテーブルに移行
-- **対象エンドポイント**: `/api/proxy/opensmile-summary/:deviceId/:date`
-
-#### **統合順序**
-1. ✅ **心理グラフ** - Supabase統合完了（2025年7月7日）
-2. 🔄 **行動グラフ** - 次回対応予定
-3. 🔄 **感情グラフ** - 最終対応予定
 
 ### 🗂️ 管理画面削除完了（2025年7月7日）
 
@@ -751,11 +718,11 @@ create table vibe_whisper_summary (
 - ✅ **関連API** - createUser、updateUser、deleteUser、broadcastNotification
 
 #### 影響なし
-- ✅ **Dashboard**: 通知機能はUI部分のみ残存（後で再実装予定）
+- ✅ **Dashboard**: 通知機能はUI部分のみ残存
 - ✅ **認証システム**: Supabase認証はそのまま維持
 - ✅ **デバイス管理**: DeviceViewは継続して使用
 
-**理由**: ユーザー情報とデバイス情報はSupabaseデータベースで管理する新しい設計に移行済みのため、従来の管理画面は不要となりました。通知機能については、後でデータベースベースの新システムとして再実装予定です。
+**理由**: ユーザー情報とデバイス情報はSupabaseデータベースで管理する新しい設計に移行済みのため、従来の管理画面は不要となりました。
 
 ### 🔧 技術仕様詳細
 
@@ -774,51 +741,6 @@ create table vibe_whisper_summary (
 - プロップ名統一（`userId` → `deviceId`）
 - データ表示ロジックはそのまま維持
 
-## 📈 今後の改善予定
-
-### 🔒 セキュリティ強化
-- [ ] JWT認証システム
-- [ ] APIレート制限
-- [ ] HTTPS対応
-- [ ] ログ監査機能
-
-### 🚀 機能拡張
-- [ ] データエクスポート機能
-- [ ] 週次・月次レポート
-- [ ] プッシュ通知対応
-- [ ] オフライン対応（PWA）
-
-### ⚡ パフォーマンス
-- [ ] React.memo 最適化
-- [ ] 仮想化対応
-- [ ] CDN 配信
-- [ ] データキャッシュ
-
-### 🧹 コード品質
-- [x] 不要なデバッグページの削除
-- [x] 日付ユーティリティの統一
-- [x] 重複ファイルの整理
-- [x] **コンポーネント名統一（2025年6月完了）**
-- [x] **NaN値防御システム実装（2025年6月完了）**
-- [x] **ユーザーフレンドリーエラー表示（2025年6月完了）**
-- [ ] ファイルパス・APIエンドポイント命名統一
-- [ ] TypeScript移行
-- [ ] 単体テスト追加
-
-### 🔄 命名統一計画（今後の課題）
-現在、歴史的経緯により命名が不統一な部分の整理予定：
-
-#### **現状（混乱要因）**
-```
-心理グラフ: VibeGraph → EmotionTimeline.jsx → emotion-timeline API
-行動グラフ: BehaviorGraph → EventLogs.jsx → sed-summary API
-```
-
-#### **将来の理想形**
-```
-心理グラフ: VibeGraph → VibeGraph.jsx → vibe-graph API
-行動グラフ: BehaviorGraph → BehaviorGraph.jsx → behavior-graph API
-```
 
 ## 🤝 コントリビューション
 
@@ -892,20 +814,6 @@ return <Dashboard />;
 - `src/components/auth/LoginForm.jsx` - ログインUIコンポーネント
 - `src/App.jsx` - 認証ガードとルート設定
 
-### 🚀 今後の開発予定
-
-#### 次回実装予定
-- [x] ユーザーに紐づくデバイス選択機能 ✅ **実装完了**
-- [x] Supabaseデータベースとの完全統合 ✅ **実装完了**
-- [x] デバイスベースのデータ取得システム ✅ **実装完了**
-- [ ] 新しい通知システムの実装（データベースベース）
-- [ ] ロールベースアクセス制御（RBAC）
-
-#### 中長期改善
-- [ ] 操作ログ・監査機能
-- [ ] リアルタイム通知システム
-- [ ] モバイルアプリとの連携強化
-- [ ] 高度なデータ可視化機能
 
 ---
 
