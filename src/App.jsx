@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Notifications from "./pages/Notifications";
+import ProfilePage from "./pages/ProfilePage";
 import LoginForm from "./components/auth/LoginForm";
 import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
 import "./index.css";
@@ -46,6 +47,11 @@ function AppContent() {
         <Route path="/notifications/:userId" element={
           <ProtectedRoute>
             <Notifications />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         } />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
