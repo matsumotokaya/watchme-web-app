@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 
-export const useAvatar = () => {
+export const useDeviceAvatar = (deviceId) => {
   const { user } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -10,15 +10,15 @@ export const useAvatar = () => {
 
   // 署名付きURLを取得
   const getSignedUrl = async () => {
-    if (!user?.id) return null;
+    if (!deviceId) return null;
 
     try {
-      const path = `${user.id}/avatar.webp`;
+      const path = `devices/${deviceId}/avatar.webp`;
       
       // まず画像が存在するか確認
       const { data: fileData, error: listError } = await supabase.storage
         .from('avatars')
-        .list(user.id, {
+        .list(`devices/${deviceId}`, {
           limit: 1,
           search: 'avatar.webp'
         });
@@ -45,7 +45,7 @@ export const useAvatar = () => {
 
       return data.signedUrl;
     } catch (err) {
-      console.error('アバターURL取得エラー:', err);
+      console.error('デバイスアバターURL取得エラー:', err);
       return null;
     }
   };
@@ -54,6 +54,10 @@ export const useAvatar = () => {
   const uploadAvatar = async (base64Data) => {
     if (!user?.id) {
       throw new Error('ユーザーがログインしていません');
+    }
+
+    if (!deviceId) {
+      throw new Error('デバイスIDが指定されていません');
     }
 
     setLoading(true);
@@ -67,7 +71,7 @@ export const useAvatar = () => {
       // WebP形式のFileオブジェクトを作成
       const file = new File([blob], 'avatar.webp', { type: 'image/webp' });
       
-      const path = `${user.id}/avatar.webp`;
+      const path = `devices/${deviceId}/avatar.webp`;
 
       // Supabase Storageにアップロード（既存ファイルは上書き）
       const { error: uploadError } = await supabase.storage
@@ -87,13 +91,13 @@ export const useAvatar = () => {
       
       return newUrl;
     } catch (err) {
-      console.error('アップロードエラー:', err);
+      console.error('デバイスアバターアップロードエラー:', err);
       
       // エラーメッセージをよりユーザーフレンドリーに
       let errorMessage = 'アップロードに失敗しました。';
       
       if (err.message?.includes('row-level security policy') || err.statusCode === '403') {
-        errorMessage = 'アバターのアップロード権限がありません。管理者にお問い合わせください。';
+        errorMessage = 'デバイスアバターのアップロード権限がありません。管理者にお問い合わせください。';
       } else if (err.message?.includes('network')) {
         errorMessage = 'ネットワークエラーが発生しました。接続を確認してください。';
       } else if (err.message?.includes('size')) {
@@ -107,10 +111,10 @@ export const useAvatar = () => {
     }
   };
 
-  // 初回読み込み時とユーザー変更時にアバターURLを取得
+  // 初回読み込み時とデバイスID変更時にアバターURLを取得
   useEffect(() => {
     const fetchAvatar = async () => {
-      if (user?.id) {
+      if (deviceId) {
         setLoading(true);
         const url = await getSignedUrl();
         setAvatarUrl(url);
@@ -121,7 +125,7 @@ export const useAvatar = () => {
     };
 
     fetchAvatar();
-  }, [user?.id]);
+  }, [deviceId]);
 
   return {
     avatarUrl,

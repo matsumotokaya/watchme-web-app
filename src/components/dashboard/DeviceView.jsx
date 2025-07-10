@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { getUserDevices } from '../../services/userService';
 import { supabase } from '../../lib/supabase';
+import DeviceAvatar from './DeviceAvatar';
+import AvatarUploader from '../profile/AvatarUploader';
+import { useDeviceAvatar } from '../../hooks/useDeviceAvatar';
 
 const DeviceView = ({ onDeviceSelect }) => {
   const { user, userProfile } = useAuth();
@@ -12,6 +15,14 @@ const DeviceView = ({ onDeviceSelect }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [showAvatarUploader, setShowAvatarUploader] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [editingDeviceId, setEditingDeviceId] = useState(null);
+  
+  // 編集中のデバイスのアバターを管理
+  const { avatarUrl: editingAvatarUrl, uploadAvatar } = useDeviceAvatar(editingDeviceId);
+  
+  // TODO: デバイスアバターのクリック機能を後で修正
 
   // デバイス一覧を読み込み
   useEffect(() => {
@@ -48,6 +59,28 @@ const DeviceView = ({ onDeviceSelect }) => {
     setSelectedDeviceId(deviceId);
     if (onDeviceSelect) {
       onDeviceSelect(deviceId);
+    }
+  };
+  
+  // アバターアップロード完了ハンドラー
+  const handleUploadComplete = async (croppedImageUrl) => {
+    if (!editingDeviceId) return;
+    
+    setIsUploading(true);
+    try {
+      // Supabase Storageにアップロード
+      await uploadAvatar(croppedImageUrl);
+      setShowAvatarUploader(false);
+      
+      // デバイス一覧を再読み込みして表示を更新
+      const userDevices = await getUserDevices(user.id);
+      setDevices(userDevices);
+    } catch (error) {
+      console.error('デバイスアバターアップロードエラー:', error);
+      alert(error.message || 'デバイスアバターのアップロードに失敗しました');
+    } finally {
+      setIsUploading(false);
+      setEditingDeviceId(null);
     }
   };
 
@@ -143,159 +176,105 @@ const DeviceView = ({ onDeviceSelect }) => {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="p-6">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">デバイス管理</h2>
-          <p className="text-sm text-gray-600">
-            データを表示するデバイスを選択してください
-          </p>
-        </div>
-
-        {/* ユーザー情報 */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-800">{userProfile?.name || user?.email}</p>
-              <p className="text-xs text-gray-500">{user?.email}</p>
-            </div>
-            <div className="text-right">
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                {userProfile?.status || 'guest'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* デバイス一覧 */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700">登録済みデバイス</h3>
-            <button
-              onClick={() => setShowAddDevice(!showAddDevice)}
-              className="text-sm text-blue-600 hover:text-blue-700"
-            >
-              + デバイスを追加
-            </button>
-          </div>
-
-          {/* デバイス追加フォーム */}
-          {showAddDevice && (
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    デバイスID (UUID)
-                  </label>
-                  <input
-                    type="text"
-                    value={newDeviceId}
-                    onChange={(e) => setNewDeviceId(e.target.value)}
-                    placeholder="例: 123e4567-e89b-12d3-a456-426614174000"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={isAdding}
-                  />
-                  {addError && (
-                    <p className="mt-1 text-xs text-red-600">{addError}</p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAddDevice}
-                    disabled={isAdding}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      isAdding
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
-                  >
-                    {isAdding ? '追加中...' : '追加'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowAddDevice(false);
-                      setNewDeviceId('');
-                      setAddError('');
-                    }}
-                    disabled={isAdding}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    キャンセル
-                  </button>
-                </div>
+        {/* 観測対象セクション */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">観測対象</h2>
+          
+          {selectedDeviceId ? (
+            <div className="flex flex-col items-center">
+              {/* アバター */}
+              <DeviceAvatar 
+                deviceId={selectedDeviceId} 
+                size="large" 
+                onClick={() => {
+                  console.log('DeviceView onClick triggered for device:', selectedDeviceId);
+                  setEditingDeviceId(selectedDeviceId);
+                  setShowAvatarUploader(true);
+                }}
+              />
+              
+              {/* ニックネーム */}
+              <h3 className="text-lg font-medium text-gray-800 mt-4">
+                ニックネーム未設定
+              </h3>
+              
+              {/* デバイス情報 */}
+              <div className="text-sm text-gray-500 mt-1 text-center">
+                <p className="font-mono">{selectedDeviceId}</p>
+                <p>{devices.find(d => d.device_id === selectedDeviceId)?.device_type || 'Unknown Device'}</p>
               </div>
-            </div>
-          )}
-
-          {/* デバイスリスト */}
-          {devices.length > 0 ? (
-            <div className="space-y-2">
-              {devices.map((device) => (
-                <div
-                  key={device.device_id}
-                  onClick={() => handleDeviceSelect(device.device_id)}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedDeviceId === device.device_id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-sm">
-                        {device.device_type || 'Unknown Device'}
-                      </p>
-                      <p className="text-xs text-gray-500 font-mono">
-                        {device.device_id}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        device.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : device.status === 'inactive'
-                          ? 'bg-gray-100 text-gray-800'
-                          : device.status === 'syncing'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {device.status}
-                      </span>
-                      {device.last_sync && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          最終同期: {new Date(device.last_sync).toLocaleDateString('ja-JP')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {selectedDeviceId === device.device_id && (
-                    <div className="mt-2 pt-2 border-t border-blue-200">
-                      <p className="text-xs text-blue-700">
-                        このデバイスのデータが表示されています
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">デバイスが登録されていません</p>
-              <button
-                onClick={() => setShowAddDevice(true)}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                最初のデバイスを追加
-              </button>
+              <p className="text-gray-500">デバイスが選択されていません</p>
             </div>
           )}
         </div>
 
-        {/* 選択中のデバイスID表示（開発用） */}
-        {selectedDeviceId && (
-          <div className="mt-6 p-3 bg-gray-100 rounded text-xs text-gray-600">
-            <p>選択中のデバイスID: {selectedDeviceId}</p>
+        {/* 観測者セクション */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">観測者</h2>
+          
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
+                <span className="text-white font-medium text-lg">
+                  {userProfile?.name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || '?'}
+                </span>
+              </div>
+              <div>
+                <p className="font-medium text-gray-800">
+                  {userProfile?.name || user?.email?.split('@')[0] || 'ユーザー名未設定'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {user?.email || 'メールアドレス未設定'}
+                </p>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
+
+
+
       </div>
+      
+      {/* アバターアップローダーモーダル */}
+      {showAvatarUploader && editingDeviceId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                デバイスアバターを変更
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAvatarUploader(false);
+                  setEditingDeviceId(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <AvatarUploader 
+              currentAvatar={editingAvatarUrl}
+              onAvatarChange={() => {}}
+              onUploadComplete={handleUploadComplete}
+              key={showAvatarUploader ? 'uploader' : 'closed'}
+            />
+            {isUploading && (
+              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                  <p className="text-gray-600">アップロード中...</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

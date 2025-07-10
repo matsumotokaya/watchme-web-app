@@ -47,7 +47,8 @@ const ProfilePage = () => {
       setShowAvatarUploader(false);
     } catch (error) {
       console.error('アップロードエラー:', error);
-      alert('画像のアップロードに失敗しました');
+      // エラーメッセージはuseAvatarで設定されたものを使用
+      alert(error.message || '画像のアップロードに失敗しました');
     } finally {
       setIsUploading(false);
     }
@@ -82,9 +83,11 @@ const ProfilePage = () => {
                     </svg>
                   )}
                 </div>
-                {/* カメラアイコンオーバーレイ */}
+                {/* カメラアイコンオーバーレイ - アバターがある時は表示しない */}
                 <div 
-                  className="absolute inset-0 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center cursor-pointer transition-all"
+                  className={`absolute inset-0 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center cursor-pointer transition-all ${
+                    avatarUrl ? 'opacity-0 pointer-events-none' : ''
+                  }`}
                   onClick={handleAvatarClick}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -108,7 +111,9 @@ const ProfilePage = () => {
 
           {/* 紐付けデバイス */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">紐付けデバイス</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">紐付けデバイス</h3>
+            </div>
             {devices.length > 0 ? (
               <div className="space-y-3">
                 {devices.map((device, index) => (

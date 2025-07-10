@@ -41,6 +41,32 @@
    - **永続化**: リロード後もアバター画像が保持される
    - **ヘッダー表示**: ナビゲーションバーのプロフィールアイコンにもアバター表示
 
+### **デバイスアバター機能実装完了** 🎉
+- ✅ デバイスごとのアバター設定・表示機能
+- ✅ 観測対象画面のUI改善（デバイス → 観測対象に変更）
+- ✅ 観測者・観測対象の関係性を明確化
+
+#### **実装内容**
+1. **useDeviceAvatarフック** (`src/hooks/useDeviceAvatar.js`)
+   - デバイス専用のSupabase Storage連携
+   - `avatars/devices/{device_id}/avatar.webp`パスでの管理
+
+2. **DeviceAvatarコンポーネント** (`src/components/dashboard/DeviceAvatar.jsx`)
+   - 常時表示のカメラアイコン（右下に青い円形背景）
+   - サイズ対応（small/medium/large）
+   - クリック可能な直感的なUI
+
+3. **観測対象画面の改善** (`src/components/dashboard/DeviceView.jsx`)
+   - 「デバイス管理」→「観測対象」に名称変更
+   - 大きなアバター表示（中央揃え）
+   - ニックネーム表示機能（現在は「ニックネーム未設定」）
+   - 観測者セクションの追加（ログインユーザー情報表示）
+   - アカウントとデバイスの関係性を明確化
+
+4. **メニューの改善**
+   - 画面下メニュー：「デバイス」→「観測対象」
+   - アイコン：スマホマーク → 人マークに変更
+
 #### **技術仕様**
 - **対応形式**: JPG, PNG, GIF, WebP（最大30MB）
 - **出力形式**: WebP 512x512px（品質80%）
@@ -551,6 +577,18 @@ npm install
 - **テーマカラー**: `tailwind.config.js`
 - **データ形式**: `src/services/staticFileService.js`のモックデータ
 - **API設定**: `server.cjs`のEC2_CONFIG
+
+## ⚙️ Supabase Storage設定
+
+アバター画像アップロード機能を使用するには、Supabase管理画面でRLSポリシーの設定が必要です。
+
+### 設定手順
+1. Supabase管理画面の「Storage」→「avatars」バケットを選択
+2. 「Policies」タブで以下のポリシーを追加：
+   - **SELECT/INSERT/UPDATE/DELETE**: `(auth.uid())::text = (storage.foldername(name))[1]`
+   - これによりユーザーは自分のディレクトリ（`{user_id}/`）のみアクセス可能
+
+詳細は[Supabase Storage設定ガイド](./docs/supabase-storage-setup.md)を参照してください。
 
 ## 🚀 デプロイ
 
