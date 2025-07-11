@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUserNotifications } from '../services/notificationService';
+import { getUserNotifications, getUnreadNotificationCount } from '../services/notificationService';
 import { useAvatar } from '../hooks/useAvatar';
+import { useAuth } from '../hooks/useAuth';
 
 const MobileLayout = ({ children, userData, activeTab, onTabChange, headerContent, dateNavigation }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { avatarUrl } = useAvatar();
 
   // localStorageのクリーンアップ（初回のみ実行）
@@ -29,28 +32,33 @@ const MobileLayout = ({ children, userData, activeTab, onTabChange, headerConten
     }
   }, []);
   
-  // ユーザーのお知らせを取得
-  // ⚠️ 注意: 通知機能は現在開発中のため、右上の通知アイコンは正常に動作しません
+  // ユーザーの通知を取得
   useEffect(() => {
     const fetchNotifications = async () => {
-      if (!userData?.id) return;
+      if (!user?.id) return;
       
       try {
         setIsLoadingNotifications(true);
-        // TODO: 通知機能の実装完了後にコメントアウトを解除
-        // const userNotifications = await getUserNotifications(userData.id);
-        // setNotifications(userNotifications);
-        setNotifications([]); // 開発中のため空配列を設定
+        console.log('通知取得開始 - ユーザーID:', user.id);
+        const userNotifications = await getUserNotifications(user.id);
+        console.log('取得した通知数:', userNotifications.length);
+        setNotifications(userNotifications);
+        
+        // 未読数を取得
+        const count = await getUnreadNotificationCount(user.id);
+        console.log('未読通知数:', count);
+        setUnreadCount(count);
       } catch (error) {
-        console.error('お知らせ取得エラー:', error);
+        console.error('通知取得エラー:', error);
         setNotifications([]);
+        setUnreadCount(0);
       } finally {
         setIsLoadingNotifications(false);
       }
     };
     
     fetchNotifications();
-  }, [userData?.id]);
+  }, [user?.id]);
   
   // 通知のダミーデータ（フォールバック用）
   const fallbackNotifications = [
@@ -193,22 +201,14 @@ const MobileLayout = ({ children, userData, activeTab, onTabChange, headerConten
     });
   };
 
-  // 表示用のお知らせデータ（実際のデータまたはフォールバック）
+  // 表示用の通知データ（実際のデータまたはフォールバック）
   const displayNotifications = notifications.length > 0 ? notifications : (userData?.id ? [] : fallbackNotifications);
-  
-  // 未読のお知らせ数を計算
-  const unreadCount = displayNotifications.filter(n => !n.isRead && !n.read).length;
 
-  // お知らせページに遷移
-  // ⚠️ 注意: 通知機能は開発中のため、現在は機能しません
+  // 通知ページに遷移
   const handleNotificationClick = () => {
-    // TODO: 通知機能の実装完了後にコメントアウトを解除
-    console.warn('通知機能は現在開発中です');
-    // if (userData?.id) {
-    //   navigate(`/notifications/${userData.id}`);
-    // } else {
-    //   navigate('/notifications');
-    // }
+    if (user?.id) {
+      navigate(`/notifications/${user.id}`);
+    }
   };
   
   return (
@@ -222,12 +222,12 @@ const MobileLayout = ({ children, userData, activeTab, onTabChange, headerConten
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* お知らせアイコン */}
+              {/* 通知アイコン */}
               <div className="relative">
                 <button 
                   className="relative p-1 rounded-full text-gray-500 hover:bg-gray-100 focus:outline-none transition-colors"
                   onClick={handleNotificationClick}
-                  aria-label="お知らせ"
+                  aria-label="通知"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />

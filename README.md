@@ -177,6 +177,40 @@ ps aux | grep -E "(npm|node|vite)"
 
 ## 🆕 最新アップデート (2025-07-11)
 
+### **通知システム Supabase 統合完了** 🎉
+- ✅ **Supabase通知テーブル統合**: PostgreSQL `notifications`テーブルによる堅牢な通知管理
+- ✅ **リアルタイム未読バッジ**: ダッシュボード右上の通知アイコンに未読数表示
+- ✅ **通知ページ実装**: タイトル・メッセージ・タイプ別アイコン表示機能
+- ✅ **既読/未読機能**: 個別既読・一括既読機能による状態管理
+- ✅ **通知タイプ対応**: announcement/event/systemタイプの分類表示
+
+#### **実装内容**
+1. **Supabaseテーブル設計**
+   - `notifications`テーブル: id, user_id, type, title, message, is_read, created_at, triggered_by, metadata
+   - UUID型user_idによるユーザー別通知管理
+   - JSONB metadataフィールドによる拡張可能設計
+
+2. **通知API関数実装** (`src/services/notificationService.js`)
+   - `createNotification`: 通知作成
+   - `getUserNotifications`: ユーザー通知取得（created_at降順）
+   - `getUnreadNotificationCount`: 未読通知数取得
+   - `updateNotificationReadStatus`: 個別既読状態更新
+   - `markAllNotificationsAsRead`: 一括既読化
+   - `deleteNotification`: 通知削除
+   - `broadcastNotification`: 複数ユーザー一括送信
+
+3. **UI統合**
+   - **MobileLayout**: 通知アイコンのバッジ表示（未読数）
+   - **Notifications.jsx**: 通知リスト表示ページ
+   - **TypeScript型定義**: `src/types/notification.ts`
+   - **認証ユーザー連携**: useAuthフックとの統合
+
+4. **通知表示機能**
+   - タイプ別アイコン表示（📢 announcement, 📅 event, ⚙️ system）
+   - 相対時間表示（「3分前」「1時間前」など）
+   - 既読/未読状態の視覚的区別
+   - 個別既読ボタンと一括既読ボタン
+
 ### **観測対象システム統合・UI改善** 🎉
 - ✅ **device_metadataテーブル統合**: 観測対象の情報（名前・年齢・性別・アバター）をデータベース管理
 - ✅ **観測対象ページ改善**: セクション順序の最適化（観測対象情報→デバイス→観測者）
@@ -691,11 +725,12 @@ CORSエラーは、**キャッシュされていない新しいデータ**を**�
 - **レスポンシブチャート**: モバイル対応グラフ
 - **データ欠損処理**: null値での線の途切れ表示とツールチップ説明
 
-### 🔔 リアルタイム通知
-- **JSON ファイルベース**: シンプルなデータ管理
-- **未読状況管理**: 既読/未読の状態管理
-- **一斉配信機能**: 管理者による全体通知
-- **優先度設定**: 重要度別の通知分類
+### 🔔 通知システム
+- **Supabaseデータベース統合**: PostgreSQL通知テーブルによる堅牢な管理
+- **リアルタイム未読バッジ**: 通知アイコンでの未読数表示
+- **未読状況管理**: 既読/未読の状態管理とバッチ処理
+- **通知タイプ別表示**: announcement/event/systemタイプ別のアイコン表示
+- **一斉配信機能**: 複数ユーザーへの一括通知送信
 
 ### 🎯 ユーザーフレンドリーなエラー処理（2025年6月改善）
 従来の技術的エラーメッセージから、分かりやすいユーザー向け表示に改善：

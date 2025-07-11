@@ -1,219 +1,206 @@
-// お知らせサービス
-// 環境に応じてAPIまたは静的ファイルを使用
-
-// 開発環境かプロダクション環境かを判定
-const isDevelopment = import.meta.env.DEV;
-
-// APIエンドポイントのベースURLを動的に取得（開発環境のみ）
-const getApiBaseUrl = () => {
-  if (isDevelopment) {
-    const hostname = window.location.hostname;
-    const apiUrl = `http://${hostname}:3001/api`;
-    console.log('Notification API Base URL:', apiUrl);
-    return apiUrl;
-  }
-  return null; // プロダクション環境では使用しない
-};
-
-const API_BASE_URL = getApiBaseUrl();
+import { supabase } from '../lib/supabase.js';
 
 /**
- * 静的JSONファイルを読み込む（プロダクション環境用）
- */
-const loadStaticNotifications = async (userId) => {
-  try {
-    const response = await fetch(`/data_accounts/${userId}/notifications.json`);
-    if (!response.ok) {
-      throw new Error(`お知らせファイルの読み込みに失敗しました: ${userId}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('静的お知らせファイル読み込みエラー:', error);
-    return [];
-  }
-};
-
-/**
- * ユーザーにお知らせを作成
- * @param {string} userId - ユーザーID
- * @param {Object} notificationData - お知らせデータ
+ * 通知を作成
+ * @param {Object} notificationData - 通知データ
  * @returns {Promise<Object>} 作成結果
  */
-export const createUserNotification = async (userId, notificationData) => {
-  if (!isDevelopment) {
-    throw new Error('プロダクション環境ではお知らせの作成はできません');
-  }
-
+export const createNotification = async (notificationData) => {
   try {
-    console.log('お知らせ作成:', userId, notificationData);
+    console.log('通知作成:', notificationData);
     
-    const response = await fetch(`${API_BASE_URL}/users/${userId}/notifications`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        type: notificationData.type || 'info',
-        priority: notificationData.priority || 'normal',
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert([{
+        user_id: notificationData.user_id,
+        type: notificationData.type || 'system',
+        title: notificationData.title,
         message: notificationData.message,
-        timestamp: new Date().toISOString(),
-        isRead: false,
-        createdAt: new Date().toISOString()
-      }),
-    });
+        triggered_by: notificationData.triggered_by,
+        metadata: notificationData.metadata
+      }])
+      .select()
+      .single();
     
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || 'お知らせの作成に失敗しました');
+    if (error) {
+      throw new Error(`通知の作成に失敗しました: ${error.message}`);
     }
     
-    return result;
+    return { success: true, notification: data };
   } catch (error) {
-    console.error('お知らせ作成エラー:', error);
+    console.error('通知作成エラー:', error);
     throw error;
   }
 };
 
 /**
- * 複数ユーザーにお知らせを一括送信
- * @param {Object} notificationData - お知らせデータ
+ * 複数ユーザーに通知を一括送信
+ * @param {Object} notificationData - 通知データ
  * @returns {Promise<Object>} 送信結果
  */
 export const broadcastNotification = async (notificationData) => {
-  if (!isDevelopment) {
-    throw new Error('プロダクション環境ではお知らせの一括送信はできません');
-  }
-
   try {
-    console.log('お知らせ一括送信:', notificationData);
+    console.log('通知一括送信:', notificationData);
     
-    const { targetUserIds = [], message, type = 'info', priority = 'normal' } = notificationData;
+    const { targetUserIds = [], title, message, type = 'announcement', triggered_by, metadata } = notificationData;
     
-    // 各ユーザーに個別にお知らせを作成
-    const results = await Promise.allSettled(
-      targetUserIds.map(userId => 
-        createUserNotification(userId, { message, type, priority })
-      )
-    );
+    // 各ユーザーに個別に通知を作成
+    const notifications = targetUserIds.map(userId => ({
+      user_id: userId,
+      type,
+      title,
+      message,
+      triggered_by,
+      metadata
+    }));
     
-    const successCount = results.filter(result => result.status === 'fulfilled').length;
-    const failureCount = results.filter(result => result.status === 'rejected').length;
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert(notifications)
+      .select();
+    
+    if (error) {
+      throw new Error(`一括通知の作成に失敗しました: ${error.message}`);
+    }
     
     return {
       success: true,
-      message: `${successCount}人のユーザーにお知らせを送信しました`,
-      sentCount: successCount,
-      failureCount: failureCount,
-      timestamp: new Date().toISOString()
+      message: `${data.length}人のユーザーに通知を送信しました`,
+      sentCount: data.length,
+      notifications: data
     };
   } catch (error) {
-    console.error('お知らせ一括送信エラー:', error);
+    console.error('通知一括送信エラー:', error);
     throw error;
   }
 };
 
 /**
- * ユーザーのお知らせ一覧を取得
+ * ユーザーの通知一覧を取得
  * @param {string} userId - ユーザーID
- * @returns {Promise<Array>} お知らせ一覧
+ * @returns {Promise<Array>} 通知一覧
  */
 export const getUserNotifications = async (userId) => {
   try {
-    console.log('お知らせ取得:', userId);
+    console.log('通知取得:', userId);
     
-    if (isDevelopment) {
-      // 開発環境：APIを使用
-      const response = await fetch(`${API_BASE_URL}/users/${userId}/notifications`);
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'お知らせの取得に失敗しました');
-      }
-      
-      // 新しい順にソート（timestampの降順）
-      const notifications = result.notifications || [];
-      return notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    } else {
-      // プロダクション環境：静的ファイルを使用
-      const notifications = await loadStaticNotifications(userId);
-      return notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      throw new Error(`通知の取得に失敗しました: ${error.message}`);
     }
+    
+    return data || [];
   } catch (error) {
-    console.error('お知らせ取得エラー:', error);
-    // エラー時は空配列を返す
+    console.error('通知取得エラー:', error);
     return [];
   }
 };
 
 /**
- * お知らせを削除
+ * 未読通知数を取得
  * @param {string} userId - ユーザーID
- * @param {string} notificationId - お知らせID
- * @returns {Promise<Object>} 削除結果
+ * @returns {Promise<number>} 未読通知数
  */
-export const deleteUserNotification = async (userId, notificationId) => {
-  if (!isDevelopment) {
-    throw new Error('プロダクション環境ではお知らせの削除はできません');
-  }
-
+export const getUnreadNotificationCount = async (userId) => {
   try {
-    console.log('お知らせ削除:', userId, notificationId);
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
     
-    const response = await fetch(`${API_BASE_URL}/users/${userId}/notifications/${notificationId}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || 'お知らせの削除に失敗しました');
+    if (error) {
+      throw new Error(`未読通知数の取得に失敗しました: ${error.message}`);
     }
     
-    return result;
+    return count || 0;
   } catch (error) {
-    console.error('お知らせ削除エラー:', error);
+    console.error('未読通知数取得エラー:', error);
+    return 0;
+  }
+};
+
+/**
+ * 通知を削除
+ * @param {string} notificationId - 通知ID
+ * @returns {Promise<Object>} 削除結果
+ */
+export const deleteNotification = async (notificationId) => {
+  try {
+    console.log('通知削除:', notificationId);
+    
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId);
+    
+    if (error) {
+      throw new Error(`通知の削除に失敗しました: ${error.message}`);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('通知削除エラー:', error);
     throw error;
   }
 };
 
 /**
- * お知らせの既読状態を更新
- * @param {string} userId - ユーザーID
- * @param {string} notificationId - お知らせID
+ * 通知の既読状態を更新
+ * @param {string} notificationId - 通知ID
  * @param {boolean} readStatus - 既読状態
  * @returns {Promise<Object>} 更新結果
  */
-export const updateNotificationReadStatus = async (userId, notificationId, readStatus = true) => {
-  if (!isDevelopment) {
-    throw new Error('プロダクション環境ではお知らせの更新はできません');
-  }
-
+export const updateNotificationReadStatus = async (notificationId, readStatus = true) => {
   try {
-    console.log('お知らせ既読状態更新:', userId, notificationId, readStatus);
+    console.log('通知既読状態更新:', notificationId, readStatus);
     
-    const response = await fetch(`${API_BASE_URL}/users/${userId}/notifications/${notificationId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        isRead: readStatus
-      }),
-    });
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({ is_read: readStatus })
+      .eq('id', notificationId)
+      .select()
+      .single();
     
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || 'お知らせの更新に失敗しました');
+    if (error) {
+      throw new Error(`通知の更新に失敗しました: ${error.message}`);
     }
     
-    return result;
+    return { success: true, notification: data };
   } catch (error) {
-    console.error('お知らせ既読状態更新エラー:', error);
+    console.error('通知既読状態更新エラー:', error);
+    throw error;
+  }
+};
+
+/**
+ * ユーザーの全通知を既読にする
+ * @param {string} userId - ユーザーID
+ * @returns {Promise<Object>} 更新結果
+ */
+export const markAllNotificationsAsRead = async (userId) => {
+  try {
+    console.log('全通知既読化:', userId);
+    
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('is_read', false)
+      .select();
+    
+    if (error) {
+      throw new Error(`全通知の既読化に失敗しました: ${error.message}`);
+    }
+    
+    return { success: true, updatedCount: data.length };
+  } catch (error) {
+    console.error('全通知既読化エラー:', error);
     throw error;
   }
 }; 

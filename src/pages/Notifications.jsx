@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getUserNotifications, updateNotificationReadStatus } from '../services/notificationService';
-import { getAllUsers } from '../services/dataService';
+import { getUserNotifications, updateNotificationReadStatus, markAllNotificationsAsRead } from '../services/notificationService';
+import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../layouts/PageLayout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -10,43 +10,23 @@ import EmptyState from '../components/common/EmptyState';
 import Badge from '../components/common/Badge';
 
 const Notifications = () => {
-  const { userId } = useParams();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [availableUsers, setAvailableUsers] = useState([]);
 
-  // ユーザー情報を取得
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const users = await getAllUsers();
-        setAvailableUsers(users);
-        
-        // URLパラメータからユーザーを特定、なければ最初のユーザー
-        const targetUser = userId ? users.find(u => u.id === userId) : users[0];
-        if (targetUser) {
-          setCurrentUser(targetUser);
-        }
-      } catch (error) {
-        console.error('ユーザー情報取得エラー:', error);
-      }
-    };
-    
-    loadUsers();
-  }, [userId]);
-
-  // お知らせを取得
+  // 通知を取得
   useEffect(() => {
     const fetchNotifications = async () => {
-      if (!currentUser?.id) return;
+      if (!user?.id) return;
       
       try {
         setIsLoading(true);
-        const userNotifications = await getUserNotifications(currentUser.id);
+        console.log('通知取得開始 - ユーザーID:', user.id);
+        const userNotifications = await getUserNotifications(user.id);
+        console.log('取得した通知:', userNotifications);
         setNotifications(userNotifications);
       } catch (error) {
-        console.error('お知らせ取得エラー:', error);
+        console.error('通知取得エラー:', error);
         setNotifications([]);
       } finally {
         setIsLoading(false);
@@ -54,18 +34,18 @@ const Notifications = () => {
     };
     
     fetchNotifications();
-  }, [currentUser?.id]);
+  }, [user?.id]);
 
   // 既読状態を更新
   const handleMarkAsRead = async (notificationId) => {
     try {
-      await updateNotificationReadStatus(currentUser.id, notificationId, true);
+      await updateNotificationReadStatus(notificationId, true);
       
       // ローカル状態を更新
       setNotifications(prev => 
         prev.map(notification => 
           notification.id === notificationId 
-            ? { ...notification, isRead: true }
+            ? { ...notification, is_read: true }
             : notification
         )
       );
@@ -77,17 +57,11 @@ const Notifications = () => {
   // すべて既読にする
   const handleMarkAllAsRead = async () => {
     try {
-      const unreadNotifications = notifications.filter(n => !n.isRead);
-      
-      await Promise.all(
-        unreadNotifications.map(notification => 
-          updateNotificationReadStatus(currentUser.id, notification.id, true)
-        )
-      );
+      await markAllNotificationsAsRead(user.id);
       
       // ローカル状態を更新
       setNotifications(prev => 
-        prev.map(notification => ({ ...notification, isRead: true }))
+        prev.map(notification => ({ ...notification, is_read: true }))
       );
     } catch (error) {
       console.error('一括既読エラー:', error);
@@ -97,6 +71,12 @@ const Notifications = () => {
   // 通知の種類によってアイコンを返す関数
   const getNotificationIcon = (type) => {
     switch (type) {
+      case 'announcement':
+        return '📢';
+      case 'event':
+        return '📅';
+      case 'system':
+        return '⚙️';
       case 'emotion':
         return '🔹';
       case 'behavior':
@@ -141,11 +121,14 @@ const Notifications = () => {
     });
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   // バッジの色を決定する関数
   const getBadgeVariant = (type) => {
     switch (type) {
+      case 'announcement': return 'primary';
+      case 'event': return 'info';
+      case 'system': return 'default';
       case 'warning': return 'warning';
       case 'error': return 'danger';
       case 'info': return 'info';
@@ -155,9 +138,8 @@ const Notifications = () => {
 
   return (
     <PageLayout
-      title="お知らせ"
+      title="通知"
       backTo="/dashboard"
-      backToParams={currentUser?.id ? { userId: currentUser.id } : undefined}
       rightContent={
         unreadCount > 0 ? (
           <Button onClick={handleMarkAllAsRead} size="sm">
@@ -173,7 +155,7 @@ const Notifications = () => {
           {notifications.map((notification) => (
             <Card
               key={notification.id}
-              highlighted={!notification.isRead}
+              highlighted={!notification.is_read}
               hover
             >
               <div className="flex items-start space-x-4">
@@ -184,17 +166,20 @@ const Notifications = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
+                      {notification.title && (
+                        <h3 className="text-lg font-semibold text-gray-800 mb-2">{notification.title}</h3>
+                      )}
                       <p className="text-gray-800 leading-relaxed">{notification.message}</p>
                       <div className="flex items-center space-x-4 mt-3">
                         <span className="text-sm text-gray-500">
-                          {formatRelativeTime(notification.timestamp)}
+                          {formatRelativeTime(notification.created_at)}
                         </span>
                         {notification.type && (
                           <Badge variant={getBadgeVariant(notification.type)}>
                             {notification.type}
                           </Badge>
                         )}
-                        {!notification.isRead && (
+                        {!notification.is_read && (
                           <Badge variant="primary">
                             未読
                           </Badge>
@@ -202,7 +187,7 @@ const Notifications = () => {
                       </div>
                     </div>
                     
-                    {!notification.isRead && (
+                    {!notification.is_read && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -219,8 +204,8 @@ const Notifications = () => {
         </div>
       ) : (
         <EmptyState
-          title="お知らせはありません"
-          description="新しいお知らせが届くとここに表示されます。"
+          title="通知はありません"
+          description="新しい通知が届くとここに表示されます。"
         />
       )}
     </PageLayout>
