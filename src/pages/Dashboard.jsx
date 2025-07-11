@@ -13,11 +13,11 @@ import Avatar from '../components/common/Avatar';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { getUserDevices } from '../services/userService';
 import { getDeviceMetadata } from '../services/deviceService';
-import { 
-  getEmotionTimelineData, 
-  getEventLogsData 
-  // getEmotionDistributionData // 🗑️ 削除予定: 使用されていない感情分布API
-} from '../services/dataService';
+// 🚨 dataService から削除されました。現在は useVaultAPI フックを使用してください。
+// import { 
+//   getEmotionTimelineData, 
+//   getEventLogsData 
+// } from '../services/dataService';
 import { getTodayString } from '../utils/dateUtils';
 import { validateEmotionTimelineData } from '../utils/emotionDataValidator';
 import { 
@@ -244,12 +244,19 @@ const Dashboard = () => {
       try {
         console.log('データ取得開始 - デバイスID:', selectedDeviceId, '対象日付:', selectedDate);
         
-        // 各グラフのデータを並列で取得（感情分布は除外）
-        const [timelineData, logsData] = await Promise.allSettled([
-          getEmotionTimelineData(selectedDeviceId, selectedDate),
-          getEventLogsData(selectedDeviceId, selectedDate)
-          // getEmotionDistributionData(userId, selectedDate) // 🗑️ 削除予定: 使用されていない感情分布API
-        ]);
+        // 🚨 各グラフは現在 useVaultAPI フックで直接データを取得しています
+        // 以下のコードは古いバージョンです（完全にコメントアウト）
+        // const [timelineData, logsData] = await Promise.allSettled([
+        //   getEmotionTimelineData(selectedDeviceId, selectedDate),
+        //   getEventLogsData(selectedDeviceId, selectedDate)
+        // ]);
+        
+        // 現在は各グラフコンポーネントが useVaultAPI で直接データを取得するため、
+        // ここでは空のデータ構造を設定
+        const [timelineData, logsData] = [
+          { status: 'fulfilled', value: null },
+          { status: 'fulfilled', value: null }
+        ];
         
         console.log('並列データ取得結果:');
         console.log('- 感情タイムライン:', timelineData.status);
@@ -361,12 +368,19 @@ const Dashboard = () => {
       try {
         console.log('データ再読み込み開始 - デバイスID:', selectedDeviceId, '対象日付:', updatedDate);
         
-        // 各グラフのデータを並列で再取得（感情分布は除外）
-        const [timelineData, logsData] = await Promise.allSettled([
-          getEmotionTimelineData(selectedDeviceId, updatedDate),
-          getEventLogsData(selectedDeviceId, updatedDate)
-          // getEmotionDistributionData(userId, updatedDate) // 🗑️ 削除予定
-        ]);
+        // 🚨 各グラフは現在 useVaultAPI フックで直接データを取得しています
+        // 以下のコードは古いバージョンです
+        // const [timelineData, logsData] = await Promise.allSettled([
+        //   getEmotionTimelineData(selectedDeviceId, updatedDate),
+        //   getEventLogsData(selectedDeviceId, updatedDate)
+        // ]);
+        
+        // 現在は各グラフコンポーネントが useVaultAPI で直接データを取得するため、
+        // ここでは空のデータ構造を設定
+        const [timelineData, logsData] = [
+          { status: 'fulfilled', value: null },
+          { status: 'fulfilled', value: null }
+        ];
         
         console.log('並列データ再取得結果:');
         console.log('- 感情タイムライン:', timelineData.status);

@@ -242,7 +242,7 @@ const asyncHandler = (fn) => {
   };
 };
 
-module.exports = {
+export {
   ERROR_CATEGORIES,
   ERROR_LEVELS,
   analyzeError,

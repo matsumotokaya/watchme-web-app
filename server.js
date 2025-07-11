@@ -1,16 +1,22 @@
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const { promises: fsPromises } = fs;
-const { createClient } = require('@supabase/supabase-js');
-const { 
+import express from 'express';
+import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+import { createClient } from '@supabase/supabase-js';
+import { 
   handleError, 
   expressErrorHandler, 
   asyncHandler, 
   ERROR_CATEGORIES 
-} = require('./config/errorHandler');
-require('dotenv').config();
+} from './config/errorHandler.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
+const { promises: fsPromises } = fs;
 
 // 環境別設定をCJS形式で読み込み
 const getServerConfig = () => {
@@ -134,6 +140,10 @@ const DATA_ROOT = path.join(__dirname, CONFIG.PATHS.dataDir);
 // ユーザー管理用のファイルパス
 const USERS_FILE = path.join(DATA_ROOT, CONFIG.PATHS.usersFile);
 
+// ⚠️ 重要: 以下のファイルシステムAPIは廃止予定です
+// TODO: 将来的にSupabaseへの完全移行を行い、これらのAPIを削除してください
+// 現在はフロントエンドで使用されているため、代替実装が必要です
+
 // 注意: EC2 API設定は削除されました。現在はSupabaseのみを使用しています。
 
 // ディレクトリが存在しない場合は作成
@@ -198,23 +208,6 @@ async function ensureDirectory(dirPath) {
   // await ensureUsersFile(); // Supabaseを使用するため無効化
   console.log(`データディレクトリを確認: ${DATA_ROOT}`);
 })();
-
-// ユーザーディレクトリの作成
-app.post('/api/users/:userId/create', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const userDir = path.join(DATA_ROOT, userId);
-    const logsDir = path.join(userDir, 'logs');
-    
-    await ensureDirectory(userDir);
-    await ensureDirectory(logsDir);
-    
-    res.json({ success: true, message: `ユーザーディレクトリを作成しました: ${userId}` });
-  } catch (error) {
-    console.log('ディレクトリ作成で問題が発生:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 
 
@@ -500,170 +493,7 @@ app.get('/api/proxy/opensmile-summary-supabase/:deviceId/:date', asyncHandler(as
 
 // 注意: EC2からの手動データ取得エンドポイントは削除されました。現在はSupabaseのみを使用しています。
 
-// 日付を指定して全データタイプを一括保存（手動更新用）
-app.post('/api/users/:userId/logs/:date', async (req, res) => {
-  try {
-    const { userId, date } = req.params;
-    const allData = req.body;
-    
-    if (!allData || typeof allData !== 'object') {
-      return res.status(400).json({ success: false, error: '有効なJSONデータが提供されていません' });
-    }
-    
-    const userDir = path.join(DATA_ROOT, userId);
-    const logsDir = path.join(userDir, 'logs');
-    const filePath = path.join(logsDir, `${date}.json`);
-    
-    // ディレクトリが存在することを確認
-    await ensureDirectory(userDir);
-    await ensureDirectory(logsDir);
-    
-    // 日付情報を追加（存在しない場合）
-    if (!allData.date) {
-      allData.date = date;
-    }
-    
-    // ファイルに書き込み（既存データは完全に上書き）
-    await fsPromises.writeFile(filePath, JSON.stringify(allData, null, 2));
-    
-    console.log(`手動更新: ${userId}/${date}.json にデータを保存しました`);
-    res.json({ 
-      success: true, 
-      message: `データを保存しました: ${userId}/${date}.json`,
-      dataTypes: Object.keys(allData).filter(key => key !== 'date')
-    });
-  } catch (error) {
-    console.log('データ一括保存で問題が発生:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
-// 特定のデータタイプを指定して日ごとのデータを保存
-app.post('/api/users/:userId/logs/:date/:dataType', async (req, res) => {
-  try {
-    const { userId, date, dataType } = req.params;
-    const { data, append = false } = req.body;
-    
-    if (!data) {
-      return res.status(400).json({ success: false, error: 'データが提供されていません' });
-    }
-    
-    const userDir = path.join(DATA_ROOT, userId);
-    const logsDir = path.join(userDir, 'logs');
-    const filePath = path.join(logsDir, `${date}.json`);
-    
-    // ディレクトリが存在することを確認
-    await ensureDirectory(userDir);
-    await ensureDirectory(logsDir);
-    
-    let existingData = {};
-    
-    // 既存ファイルがある場合は読み込み
-    if (fs.existsSync(filePath)) {
-      try {
-        const fileContent = await fsPromises.readFile(filePath, 'utf8');
-        existingData = JSON.parse(fileContent);
-      } catch (error) {
-        console.log('既存ファイル読み込みで問題が発生:', error);
-        existingData = {};
-      }
-    }
-    
-    if (append && existingData[dataType]) {
-      // 既存のデータに追記
-      if (Array.isArray(existingData[dataType]) && Array.isArray(data)) {
-        // 配列の場合は結合
-        existingData[dataType] = [...existingData[dataType], ...data];
-      } else if (typeof existingData[dataType] === 'object' && typeof data === 'object') {
-        // オブジェクトの場合はマージ
-        existingData[dataType] = { ...existingData[dataType], ...data };
-      } else {
-        // その他の場合は上書き
-        existingData[dataType] = data;
-      }
-    } else {
-      // 新規データまたは上書き
-      existingData[dataType] = data;
-    }
-    
-    // ファイルに書き込み
-    await fsPromises.writeFile(filePath, JSON.stringify(existingData, null, 2));
-    
-    res.json({ success: true, message: `データを保存しました: ${userId}/${date}.json (${dataType})` });
-  } catch (error) {
-    console.log('データ保存で問題が発生:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// 特定の日付のログに含まれるデータタイプ一覧を取得
-app.get('/api/users/:userId/logs/:date/types', async (req, res) => {
-  try {
-    const { userId, date } = req.params;
-    const filePath = path.join(DATA_ROOT, userId, 'logs', `${date}.json`);
-    
-    try {
-      await fsPromises.access(filePath, fs.constants.F_OK);
-    } catch (error) {
-      return res.json({ success: true, dataTypes: [] });
-    }
-    
-    const fileContent = await fsPromises.readFile(filePath, 'utf8');
-    const allData = JSON.parse(fileContent);
-    const dataTypes = Object.keys(allData);
-    
-    res.json({ success: true, dataTypes });
-  } catch (error) {
-    console.log('データタイプ一覧取得で問題が発生:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// 特定のデータタイプを指定して日付のデータを取得
-app.get('/api/users/:userId/logs/:date/:dataType', async (req, res) => {
-  try {
-    const { userId, date, dataType } = req.params;
-    const filePath = path.join(DATA_ROOT, userId, 'logs', `${date}.json`);
-    
-    try {
-      await fsPromises.access(filePath, fs.constants.F_OK);
-    } catch (error) {
-      return res.status(404).json({ success: false, error: '指定された日付のデータが見つかりません' });
-    }
-    
-    const fileContent = await fsPromises.readFile(filePath, 'utf8');
-    const allData = JSON.parse(fileContent);
-    
-    if (!allData[dataType]) {
-      return res.status(404).json({ success: false, error: `指定されたデータタイプ(${dataType})のデータが見つかりません` });
-    }
-    
-    res.json({ success: true, data: allData[dataType] });
-  } catch (error) {
-    console.log('データ取得で問題が発生:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// 日付を指定してデータを取得（全データタイプ）
-app.get('/api/users/:userId/logs/:date', async (req, res) => {
-  try {
-    const { userId, date } = req.params;
-    const filePath = path.join(DATA_ROOT, userId, 'logs', `${date}.json`);
-    
-    try {
-      await fsPromises.access(filePath, fs.constants.F_OK);
-    } catch (error) {
-      return res.status(404).json({ success: false, error: '指定された日付のデータが見つかりません' });
-    }
-    
-    const data = await fsPromises.readFile(filePath, 'utf8');
-    res.json({ success: true, data: JSON.parse(data) });
-  } catch (error) {
-    console.log('データ取得で問題が発生:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // ===== ユーザー管理API =====
 
@@ -698,160 +528,6 @@ app.get('/api/users/:userId', async (req, res) => {
   }
 });
 
-// 新規ユーザーを作成
-app.post('/api/users', async (req, res) => {
-  try {
-    const newUser = req.body;
-    
-    // 必須フィールドの検証
-    if (!newUser.name) {
-      return res.status(400).json({ success: false, error: '名前は必須です' });
-    }
-    
-    // 通常アカウントの場合は親アカウントが必須
-    if (newUser.type === 'normal' && !newUser.parentId) {
-      return res.status(400).json({ success: false, error: '通常アカウントには親アカウントの指定が必須です' });
-    }
-    
-    // IDを生成（タイムスタンプベース）
-    newUser.id = `user${Date.now()}`;
-    
-    // デフォルト値の設定
-    newUser.type = newUser.type || 'normal';
-    
-    // profileImageフィールドは削除（統一のため）
-    delete newUser.profileImage;
-    
-    // profileImageUrlが指定されていない場合はデフォルト画像を生成
-    if (!newUser.profileImageUrl || !newUser.profileImageUrl.trim()) {
-      newUser.profileImageUrl = `/avatars/avatar-${newUser.name.charAt(0)}.png`;
-    }
-    
-    const fileContent = await fsPromises.readFile(USERS_FILE, 'utf8');
-    const users = JSON.parse(fileContent);
-    
-    // 親子関係の処理
-    if (newUser.type === 'master') {
-      // マスターアカウントの場合は空のchildrenIds配列を初期化
-      newUser.childrenIds = [];
-    } else if (newUser.type === 'normal' && newUser.parentId) {
-      // 通常アカウントの場合は親アカウントを確認し、親のchildrenIdsに追加
-      const parentUser = users.find(u => u.id === newUser.parentId);
-      if (!parentUser) {
-        return res.status(400).json({ success: false, error: '指定された親アカウントが見つかりません' });
-      }
-      if (parentUser.type !== 'master') {
-        return res.status(400).json({ success: false, error: '親アカウントはマスターアカウントである必要があります' });
-      }
-      
-      // 親アカウントのchildrenIdsに新しいユーザーIDを追加
-      if (!parentUser.childrenIds) {
-        parentUser.childrenIds = [];
-      }
-      parentUser.childrenIds.push(newUser.id);
-    }
-    
-    // 新しいユーザーを追加
-    users.push(newUser);
-    
-    // ファイルに保存
-    await fsPromises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
-    
-    // ユーザーディレクトリも作成
-    await ensureDirectory(path.join(DATA_ROOT, newUser.id));
-    await ensureDirectory(path.join(DATA_ROOT, newUser.id, 'logs'));
-    
-    res.json({ success: true, user: newUser, message: 'ユーザーが作成されました' });
-  } catch (error) {
-    console.log('ユーザー作成で問題が発生:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ユーザー情報を更新
-app.put('/api/users/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const updatedUserData = req.body;
-    
-    const fileContent = await fsPromises.readFile(USERS_FILE, 'utf8');
-    const users = JSON.parse(fileContent);
-    
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
-      return res.status(404).json({ success: false, error: 'ユーザーが見つかりません' });
-    }
-    
-    // ユーザー情報を更新（IDは変更不可）
-    users[userIndex] = { ...users[userIndex], ...updatedUserData, id: userId };
-    
-    // ファイルに保存
-    await fsPromises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
-    
-    res.json({ success: true, user: users[userIndex], message: 'ユーザー情報が更新されました' });
-  } catch (error) {
-    console.log('ユーザー更新で問題が発生:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ユーザーを削除
-app.delete('/api/users/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    const fileContent = await fsPromises.readFile(USERS_FILE, 'utf8');
-    const users = JSON.parse(fileContent);
-    
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
-      return res.status(404).json({ success: false, error: 'ユーザーが見つかりません' });
-    }
-    
-    const deletedUser = users[userIndex];
-    
-    // 親子関係の処理
-    if (deletedUser.type === 'master' && deletedUser.childrenIds && deletedUser.childrenIds.length > 0) {
-      // マスターアカウントに子アカウントがある場合は削除を拒否
-      return res.status(400).json({ 
-        success: false, 
-        error: 'このマスターアカウントには子アカウントが存在します。先に子アカウントを削除してください。' 
-      });
-    } else if (deletedUser.type === 'normal' && deletedUser.parentId) {
-      // 通常アカウントの場合は親アカウントのchildrenIdsから削除
-      const parentUser = users.find(u => u.id === deletedUser.parentId);
-      if (parentUser && parentUser.childrenIds) {
-        parentUser.childrenIds = parentUser.childrenIds.filter(id => id !== userId);
-      }
-    }
-    
-    // ユーザーをリストから削除
-    users.splice(userIndex, 1);
-    
-    // ファイルに保存
-    await fsPromises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
-    
-    // ユーザーのデータディレクトリも削除（オプション）
-    const userDir = path.join(DATA_ROOT, userId);
-    try {
-      await fsPromises.access(userDir, fs.constants.F_OK);
-      // ディレクトリが存在する場合は削除
-      await fsPromises.rm(userDir, { recursive: true, force: true });
-      console.log(`ユーザーディレクトリを削除しました: ${userDir}`);
-    } catch (error) {
-      console.log(`ユーザーディレクトリが存在しないか削除できませんでした: ${userDir}`);
-    }
-    
-    res.json({ 
-      success: true, 
-      user: deletedUser, 
-      message: `ユーザー「${deletedUser.name}」が削除されました` 
-    });
-  } catch (error) {
-    console.log('ユーザー削除で問題が発生:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // ===== お知らせ管理API =====
 
