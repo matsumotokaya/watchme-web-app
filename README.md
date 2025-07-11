@@ -6,6 +6,139 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.1.7-cyan)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth-green)](https://supabase.com/)
 
+## 🚀 クイックスタート（重要：最初にお読みください）
+
+### 📋 必要環境
+- Node.js 18+ 
+- npm 8+
+- **Supabaseプロジェクト**（認証設定済み）
+
+### 🔧 環境設定
+
+#### **1. 依存関係のインストール**
+```bash
+npm install --legacy-peer-deps
+```
+
+#### **2. Supabase設定**
+`.env`ファイルを作成してSupabase認証情報を設定：
+
+```env
+# Supabase 設定
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# 開発用設定
+NODE_ENV=development
+
+# データソース設定（supabase または vault）
+VITE_DATA_SOURCE=supabase
+```
+
+### ⚡ 起動方法
+
+#### **通常のターミナルでの起動（推奨）**
+```bash
+# 開発サーバーを起動
+./start-dev.command
+
+# サーバーを停止
+./stop-dev.command
+```
+
+#### **Claude CodeやVS Code統合ターミナルでの起動**
+```bash
+# バックグラウンドモードで起動（タイムアウト回避）
+./start-dev.command --background
+
+# サーバーを停止
+./stop-dev.command
+
+# ログファイルも削除する場合
+./stop-dev.command --clean-logs
+```
+
+### 🌐 アクセス
+- **ダッシュボード**: http://localhost:5173 （認証が必要）
+- **API**: http://localhost:3001/api
+
+## ⚠️ よくあるトラブルと解決方法
+
+### 1. **サーバーが起動しない / すぐに停止する**
+
+**原因**: Claude CodeやIDE統合ターミナルのタイムアウト制限
+- 通常の`npm run dev`は永続的に動作するため、5-10秒でタイムアウトエラーになります
+
+**解決方法**:
+```bash
+# バックグラウンドモードを使用
+./start-dev.command --background
+
+# または、nohupで直接起動
+nohup npm run server > server.log 2>&1 &
+nohup npm run dev > vite.log 2>&1 &
+```
+
+### 2. **ポートが既に使用されているエラー**
+
+**エラー例**: `Error: listen EADDRINUSE: address already in use :::3001`
+
+**解決方法**:
+```bash
+# ポート3001を使用しているプロセスを確認
+lsof -i :3001
+
+# プロセスを終了
+kill -9 <PID>
+
+# または、全ての関連プロセスを停止
+./stop-dev.command
+```
+
+### 3. **npm installでエラーが発生**
+
+**エラー例**: `npm ERR! peer dep missing`
+
+**解決方法**:
+```bash
+# レガシーピア依存関係を許可してインストール
+npm install --legacy-peer-deps
+
+# それでも失敗する場合は、キャッシュをクリア
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install --legacy-peer-deps
+```
+
+### 4. **"command not found" エラー**
+
+**解決方法**:
+```bash
+# 実行権限を付与
+chmod +x start-dev.command
+chmod +x stop-dev.command
+```
+
+### 5. **ログの確認方法**
+
+サーバーが起動しているように見えてもアクセスできない場合：
+```bash
+# ログファイルを確認
+tail -f server.log    # バックエンドのログ
+tail -f vite.log      # フロントエンドのログ
+
+# リアルタイムでプロセスを確認
+ps aux | grep -E "(npm|node|vite)"
+```
+
+## 🆕 最新アップデート (2025-07-11)
+
+### **起動スクリプトの改善** 🔧
+- ✅ 通常モードとバックグラウンドモードの2つの起動方法を提供
+- ✅ Claude CodeやVS Code統合ターミナルでのタイムアウト問題を解決
+- ✅ より詳細なプロセス管理とエラーハンドリング
+- ✅ ログファイルの自動生成（`server.log`、`vite.log`）
+
 ## 🆕 最新アップデート (2025-07-10)
 
 ### **アバター変更機能実装完了** 🎉
@@ -138,43 +271,6 @@ WatchMeは、音声メタ情報から「こころ」を可視化するツール�
 - 🌅 **日付ナビゲーション**: 直感的な日付選択・履歴閲覧
 - ⚡ **高速データ取得**: Supabaseダイレクト接続による高速表示
 - 🛡️ **堅牢なエラーハンドリング**: NaN値自動正規化、データ欠損時の適切な表示
-
-## 🚀 クイックスタート
-
-### 📋 必要環境
-- Node.js 18+ 
-- npm 8+
-- **Supabaseプロジェクト**（認証設定済み）
-- モダンブラウザ（Chrome 90+, Firefox 90+, Safari 14+）
-
-### 🔧 環境設定
-
-#### **1. Supabase設定**
-`.env`ファイルを作成してSupabase認証情報を設定：
-
-```env
-# Supabase 設定
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-
-# 開発用設定
-NODE_ENV=development
-
-# データソース設定（supabase または vault）
-VITE_DATA_SOURCE=supabase
-```
-
-#### **2. 起動**
-
-```bash
-# 依存関係インストール & 開発サーバー起動
-npm install --legacy-peer-deps
-./start-dev.sh
-```
-
-### 🌐 アクセス
-- **ダッシュボード**: http://localhost:5173 （認証が必要）
-- **API**: http://localhost:3001/api
 
 ## 📱 機能概要
 

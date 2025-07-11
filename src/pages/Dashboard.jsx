@@ -300,7 +300,6 @@ const Dashboard = () => {
   
   // デバイス選択ハンドラー
   const handleDeviceSelect = (deviceId) => {
-    console.log('デバイス選択:', deviceId);
     setSelectedDeviceId(deviceId);
   };
   

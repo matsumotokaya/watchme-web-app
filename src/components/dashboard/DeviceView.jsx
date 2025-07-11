@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { getUserDevices } from '../../services/userService';
 import { supabase } from '../../lib/supabase';
@@ -18,11 +18,11 @@ const DeviceView = ({ onDeviceSelect }) => {
   const [showAvatarUploader, setShowAvatarUploader] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [editingDeviceId, setEditingDeviceId] = useState(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editingDevice, setEditingDevice] = useState(null);
   
   // 編集中のデバイスのアバターを管理
   const { avatarUrl: editingAvatarUrl, uploadAvatar } = useDeviceAvatar(editingDeviceId);
-  
-  // TODO: デバイスアバターのクリック機能を後で修正
 
   // デバイス一覧を読み込み
   useEffect(() => {
@@ -32,7 +32,6 @@ const DeviceView = ({ onDeviceSelect }) => {
       setIsLoading(true);
       try {
         const userDevices = await getUserDevices(user.id);
-        console.log('デバイス一覧取得成功:', userDevices);
         setDevices(userDevices);
         
         // 最初のアクティブなデバイスを自動選択
@@ -174,6 +173,7 @@ const DeviceView = ({ onDeviceSelect }) => {
   }
 
   return (
+    <Fragment>
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="p-6">
         {/* 観測対象セクション */}
@@ -187,7 +187,6 @@ const DeviceView = ({ onDeviceSelect }) => {
                 deviceId={selectedDeviceId} 
                 size="large" 
                 onClick={() => {
-                  console.log('DeviceView onClick triggered for device:', selectedDeviceId);
                   setEditingDeviceId(selectedDeviceId);
                   setShowAvatarUploader(true);
                 }}
@@ -237,45 +236,46 @@ const DeviceView = ({ onDeviceSelect }) => {
 
 
       </div>
-      
-      {/* アバターアップローダーモーダル */}
-      {showAvatarUploader && editingDeviceId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">
-                デバイスアバターを変更
-              </h3>
-              <button
-                onClick={() => {
-                  setShowAvatarUploader(false);
-                  setEditingDeviceId(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <AvatarUploader 
-              currentAvatar={editingAvatarUrl}
-              onAvatarChange={() => {}}
-              onUploadComplete={handleUploadComplete}
-              key={showAvatarUploader ? 'uploader' : 'closed'}
-            />
-            {isUploading && (
-              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
-                <div className="text-center">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
-                  <p className="text-gray-600">アップロード中...</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
+    
+    {/* アバターアップローダーモーダル - コンポーネントの最後に配置 */}
+    {showAvatarUploader && editingDeviceId && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">
+              デバイスアバターを変更
+            </h3>
+            <button
+              onClick={() => {
+                setShowAvatarUploader(false);
+                setEditingDeviceId(null);
+              }}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <AvatarUploader 
+            currentAvatar={editingAvatarUrl}
+            onAvatarChange={() => {}}
+            onUploadComplete={handleUploadComplete}
+            key={showAvatarUploader ? 'uploader' : 'closed'}
+          />
+          {isUploading && (
+            <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                <p className="text-gray-600">アップロード中...</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    </Fragment>
   );
 };
 
