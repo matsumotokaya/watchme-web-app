@@ -6,30 +6,94 @@ const { promises: fsPromises } = fs;
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
+// 設定の読み込み（.envから）
+const CONFIG = {
+  // サーバー設定
+  PORT: parseInt(process.env.PORT) || 3001,
+  EXPRESS_JSON_LIMIT: process.env.EXPRESS_JSON_LIMIT || '50mb',
+  
+  // ディレクトリ設定
+  DATA_ROOT_DIR: process.env.DATA_ROOT_DIR || 'data_accounts',
+  USERS_FILE_NAME: process.env.USERS_FILE_NAME || 'users.json',
+  STATIC_DIST_DIR: process.env.STATIC_DIST_DIR || 'dist',
+  AVATARS_DIR: process.env.AVATARS_DIR || 'public/avatars',
+  
+  // Supabase設定
+  SUPABASE_URL: process.env.VITE_SUPABASE_URL,
+  SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+  
+  // データソース設定
+  DATA_SOURCE: process.env.VITE_DATA_SOURCE || 'supabase',
+  
+  // 環境設定
+  NODE_ENV: process.env.NODE_ENV || 'development'
+};
+
+// 設定の検証
+const validateConfig = () => {
+  const errors = [];
+  
+  // 必須環境変数のチェック
+  if (!CONFIG.SUPABASE_URL) {
+    errors.push('VITE_SUPABASE_URL が設定されていません');
+  }
+  if (!CONFIG.SUPABASE_ANON_KEY) {
+    errors.push('VITE_SUPABASE_ANON_KEY が設定されていません');
+  }
+  
+  // ポート番号の検証
+  if (isNaN(CONFIG.PORT) || CONFIG.PORT < 1 || CONFIG.PORT > 65535) {
+    errors.push(`無効なポート番号: ${CONFIG.PORT}`);
+  }
+  
+  // データソース設定の検証
+  if (!['supabase', 'vault'].includes(CONFIG.DATA_SOURCE)) {
+    errors.push(`無効なデータソース: ${CONFIG.DATA_SOURCE} (supabase または vault である必要があります)`);
+  }
+  
+  if (errors.length > 0) {
+    console.error('❌ 設定エラーが検出されました:');
+    errors.forEach(error => console.error(`  - ${error}`));
+    console.error('\n.envファイルを確認してください。');
+    process.exit(1);
+  }
+  
+  // 設定内容のログ出力（開発環境のみ）
+  if (CONFIG.NODE_ENV === 'development') {
+    console.log('⚙️  設定情報:');
+    console.log(`  - ポート: ${CONFIG.PORT}`);
+    console.log(`  - データソース: ${CONFIG.DATA_SOURCE}`);
+    console.log(`  - 環境: ${CONFIG.NODE_ENV}`);
+    console.log(`  - JSONリミット: ${CONFIG.EXPRESS_JSON_LIMIT}`);
+  }
+};
+
+// 設定検証を実行
+validateConfig();
+
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 // Supabaseクライアントの初期化
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY
+  CONFIG.SUPABASE_URL,
+  CONFIG.SUPABASE_ANON_KEY
 );
 
 // ミドルウェア
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.static('dist')); // Viteのビルドディレクトリを提供
-app.use('/product/dist', express.static('dist')); // プロダクション環境用のパス
+app.use(express.json({ limit: CONFIG.EXPRESS_JSON_LIMIT }));
+app.use(express.static(CONFIG.STATIC_DIST_DIR)); // Viteのビルドディレクトリを提供
+app.use('/product/dist', express.static(CONFIG.STATIC_DIST_DIR)); // プロダクション環境用のパス
 
 // アバター画像の静的配信（ローカル・本番共通）
-app.use('/avatars', express.static('public/avatars'));
-app.use('/product/dist/avatars', express.static('public/avatars'));
+app.use('/avatars', express.static(CONFIG.AVATARS_DIR));
+app.use('/product/dist/avatars', express.static(CONFIG.AVATARS_DIR));
 
 // データルートディレクトリ
-const DATA_ROOT = path.join(__dirname, 'data_accounts');
+const DATA_ROOT = path.join(__dirname, CONFIG.DATA_ROOT_DIR);
 
 // ユーザー管理用のファイルパス
-const USERS_FILE = path.join(DATA_ROOT, 'users.json');
+const USERS_FILE = path.join(DATA_ROOT, CONFIG.USERS_FILE_NAME);
 
 // 注意: EC2 API設定は削除されました。現在はSupabaseのみを使用しています。
 
@@ -882,9 +946,14 @@ app.get('*', (req, res) => {
   }
   
   // その他のリクエストはindex.htmlを返す（SPAルーティング対応）
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, CONFIG.STATIC_DIST_DIR, 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`サーバーが起動しました: http://localhost:${PORT}`);
+app.listen(CONFIG.PORT, () => {
+  console.log(`サーバーがポート ${CONFIG.PORT} で起動しました`);
+  console.log(`ダッシュボード: http://localhost:${CONFIG.PORT}`);
+  console.log(`API: http://localhost:${CONFIG.PORT}/api`);
+  console.log(`データディレクトリ: ${DATA_ROOT}`);
+  console.log(`アバターディレクトリ: ${CONFIG.AVATARS_DIR}`);
+  console.log(`Supabase URL: ${CONFIG.SUPABASE_URL}`);
 }); 

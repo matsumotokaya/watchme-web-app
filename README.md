@@ -20,11 +20,11 @@
 npm install --legacy-peer-deps
 ```
 
-#### **2. Supabase設定**
-`.env`ファイルを作成してSupabase認証情報を設定：
+#### **2. 環境設定**
+`.env`ファイルを作成して各種設定を行います：
 
 ```env
-# Supabase 設定
+# Supabase 設定（必須）
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 
@@ -33,7 +33,21 @@ NODE_ENV=development
 
 # データソース設定（supabase または vault）
 VITE_DATA_SOURCE=supabase
+
+# サーバー設定（オプション：デフォルト値あり）
+PORT=3001
+EXPRESS_JSON_LIMIT=50mb
+DATA_ROOT_DIR=data_accounts
+USERS_FILE_NAME=users.json
+STATIC_DIST_DIR=dist
+AVATARS_DIR=public/avatars
 ```
+
+**⚙️ 設定の一元管理について：**
+- すべての設定は`.env`ファイルで管理されます
+- サーバー起動時に設定の検証が行われます
+- 開発環境では設定内容がコンソールに表示されます
+- 必須設定が不足している場合はエラーメッセージが表示されます
 
 ### ⚡ 起動方法
 
@@ -515,8 +529,9 @@ CORSエラーは、**キャッシュされていない新しいデータ**を**�
 - **API エンドポイント**: 冗長なEC2プロキシエンドポイントを削除、Supabaseのみに統一 ✅
 - **観測対象管理**: device_metadataテーブル統合によるアバター・情報管理システム完成 ✅
 - **ヘッダーUI**: 観測対象中心の直感的デバイス選択インターフェース完成 ✅
+- **設定一元管理**: .envファイルによる設定管理、検証機能、デフォルト値対応 ✅
 
-3つのグラフコンポーネント、完全なデータベース統合、および観測対象中心の設計アーキテクチャが実現されています。
+3つのグラフコンポーネント、完全なデータベース統合、観測対象中心の設計アーキテクチャ、および保守性の高い設定管理システムが実現されています。
 
 ### ✅ Supabaseデータベース統合完了
 
