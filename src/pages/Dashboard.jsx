@@ -12,7 +12,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import Avatar from '../components/common/Avatar';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { getUserDevices } from '../services/userService';
-import { useDeviceAvatar } from '../hooks/useDeviceAvatar';
+import { getDeviceMetadata } from '../services/deviceService';
 import { 
   getEmotionTimelineData, 
   getEventLogsData 
@@ -179,8 +179,8 @@ const Dashboard = () => {
   // デバイス一覧
   const [devices, setDevices] = useState([]);
   
-  // 選択されたデバイスのアバター
-  const { avatarUrl: selectedDeviceAvatarUrl } = useDeviceAvatar(selectedDeviceId);
+  // デバイスメタデータ一覧
+  const [devicesMetadata, setDevicesMetadata] = useState({});
 
   console.log('Dashboard 初期化:', {
     user: user?.email,
@@ -203,6 +203,16 @@ const Dashboard = () => {
         const userDevices = await getUserDevices(user.id);
         setDevices(userDevices);
         
+        // 各デバイスのメタデータを取得
+        const metadataMap = {};
+        for (const device of userDevices) {
+          const metadata = await getDeviceMetadata(device.device_id);
+          if (metadata) {
+            metadataMap[device.device_id] = metadata;
+          }
+        }
+        setDevicesMetadata(metadataMap);
+        
         // 最初のアクティブなデバイスを自動選択
         if (!selectedDeviceId && userDevices.length > 0) {
           const activeDevice = userDevices.find(d => d.status === 'active') || userDevices[0];
@@ -213,6 +223,7 @@ const Dashboard = () => {
       } catch (error) {
         console.error('デバイス取得エラー:', error);
         setDevices([]);
+        setDevicesMetadata({});
       }
     };
 
@@ -473,26 +484,26 @@ const Dashboard = () => {
         className="flex items-center cursor-pointer"
         onClick={() => setShowUserMenu(!showUserMenu)}
       >
-        {/* デバイスアバター */}
+        {/* 観測対象アバター */}
         <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
-          {selectedDeviceAvatarUrl ? (
+          {selectedDeviceId && devicesMetadata[selectedDeviceId]?.avatar_url ? (
             <img 
-              src={selectedDeviceAvatarUrl} 
-              alt="Device" 
+              src={devicesMetadata[selectedDeviceId].avatar_url} 
+              alt="観測対象" 
               className="w-8 h-8 rounded-full object-cover"
             />
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           )}
         </div>
         <div className="ml-2">
           <p className="text-sm font-medium text-gray-800">
-            {devices.find(d => d.device_id === selectedDeviceId)?.device_name || 'デバイス未選択'}
+            {selectedDeviceId && devicesMetadata[selectedDeviceId]?.name || '観測対象未選択'}
           </p>
           <p className="text-xs text-gray-500">
-            {selectedDeviceId ? selectedDeviceId.substring(0, 8) + '...' : 'デバイスを選択'}
+            {selectedDeviceId ? `デバイス: ${selectedDeviceId.substring(0, 8)}...` : '観測対象を選択'}
           </p>
         </div>
         <svg className="ml-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -505,7 +516,7 @@ const Dashboard = () => {
         <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg overflow-hidden z-10 w-64">
           <div className="p-2">
             <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
-              デバイス選択
+              観測対象選択
             </div>
             <div className="mt-1 space-y-1">
               {devices.map((device) => (
@@ -522,13 +533,21 @@ const Dashboard = () => {
                   }`}
                 >
                   <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
+                    {devicesMetadata[device.device_id]?.avatar_url ? (
+                      <img 
+                        src={devicesMetadata[device.device_id].avatar_url} 
+                        alt="観測対象" 
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    )}
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{device.device_name || `デバイス ${devices.indexOf(device) + 1}`}</p>
-                    <p className="text-xs text-gray-500">{device.device_id.substring(0, 12)}...</p>
+                    <p className="font-medium">{devicesMetadata[device.device_id]?.name || `観測対象 ${devices.indexOf(device) + 1}`}</p>
+                    <p className="text-xs text-gray-500">デバイス: {device.device_id.substring(0, 12)}...</p>
                   </div>
                   {selectedDeviceId === device.device_id && (
                     <svg className="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">

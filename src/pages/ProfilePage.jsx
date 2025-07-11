@@ -4,6 +4,7 @@ import PageLayout from '../layouts/PageLayout';
 import { useAuth } from '../hooks/useAuth';
 import { useAvatar } from '../hooks/useAvatar';
 import AvatarUploader from '../components/profile/AvatarUploader';
+import { getUserDevices } from '../services/userService';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -15,11 +16,20 @@ const ProfilePage = () => {
 
   useEffect(() => {
     // デバイス情報の取得
-    const storedDevices = localStorage.getItem('devices');
-    if (storedDevices) {
-      setDevices(JSON.parse(storedDevices));
-    }
-  }, []);
+    const loadDevices = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const userDevices = await getUserDevices(user.id);
+        setDevices(userDevices);
+      } catch (error) {
+        console.error('デバイス取得エラー:', error);
+        setDevices([]);
+      }
+    };
+    
+    loadDevices();
+  }, [user]);
 
   const handleLogout = async () => {
     // ログアウト処理
@@ -116,15 +126,15 @@ const ProfilePage = () => {
             </div>
             {devices.length > 0 ? (
               <div className="space-y-3">
-                {devices.map((device, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                {devices.map((device) => (
+                  <div key={device.device_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                       </svg>
                       <div>
-                        <p className="font-medium text-gray-800">{device.name || `デバイス ${index + 1}`}</p>
-                        <p className="text-sm text-gray-600">{device.id}</p>
+                        <p className="font-medium text-gray-800">{device.device_name || device.device_type || 'デバイス'}</p>
+                        <p className="text-sm text-gray-600">{device.device_id.substring(0, 12)}...</p>
                       </div>
                     </div>
                     <span className={`px-2 py-1 text-xs rounded-full ${
