@@ -36,11 +36,18 @@ VITE_DATA_SOURCE=supabase
 
 # サーバー設定（オプション：デフォルト値あり）
 PORT=3001
+VITE_PORT=5173
 EXPRESS_JSON_LIMIT=50mb
 DATA_ROOT_DIR=data_accounts
 USERS_FILE_NAME=users.json
 STATIC_DIST_DIR=dist
 AVATARS_DIR=public/avatars
+
+# パス設定（環境別）
+VITE_BASE_PATH=/product/dist/
+
+# CORS設定（本番環境用、カンマ区切り）
+# CORS_ORIGIN=https://yourdomain.com,https://www.yourdomain.com
 ```
 
 **⚙️ 設定の一元管理について：**
@@ -48,6 +55,12 @@ AVATARS_DIR=public/avatars
 - サーバー起動時に設定の検証が行われます
 - 開発環境では設定内容がコンソールに表示されます
 - 必須設定が不足している場合はエラーメッセージが表示されます
+
+**🔄 環境ごとの設定簡素化：**
+- `vite.config.js`と`server.cjs`の設定重複を解消
+- `NODE_ENV`に基づく動的な設定決定
+- 環境別パス設定とCORS設定の自動切り替え
+- 開発/本番環境での最適化設定
 
 ### ⚡ 起動方法
 
@@ -372,12 +385,16 @@ watchme_v8/
 │   ├── 📁 pages/             # ページコンポーネント
 │   ├── 📁 services/          # API サービス
 │   └── 📁 utils/             # ユーティリティ
+├── 📁 config/                # 設定管理
+│   └── 📄 environments.js    # 環境別設定の一元管理
 ├── 📁 data_accounts/         # ローカルデータストレージ
 │   └── 📁 {device_id}/       # デバイス別データ
 │       └── 📁 logs/          # 日付別ログファイル
 ├── 📁 public/                # 静的ファイル
 │   └── 📁 avatars/           # プロフィール画像
-├── 🗃️ server.cjs             # Express.js バックエンド
+├── 🗃️ server.cjs             # Express.js バックエンド（環境別設定対応）
+├── ⚙️ vite.config.js         # Vite設定（環境変数ベース）
+├── 📄 .env                   # 環境変数（設定一元管理）
 ├── 📜 package.json           # 依存関係
 └── 📜 README.md              # プロジェクト説明
 ```
@@ -530,8 +547,9 @@ CORSエラーは、**キャッシュされていない新しいデータ**を**�
 - **観測対象管理**: device_metadataテーブル統合によるアバター・情報管理システム完成 ✅
 - **ヘッダーUI**: 観測対象中心の直感的デバイス選択インターフェース完成 ✅
 - **設定一元管理**: .envファイルによる設定管理、検証機能、デフォルト値対応 ✅
+- **環境別設定簡素化**: vite.config.jsとserver.cjsの設定重複解消、NODE_ENV基準の動的設定 ✅
 
-3つのグラフコンポーネント、完全なデータベース統合、観測対象中心の設計アーキテクチャ、および保守性の高い設定管理システムが実現されています。
+3つのグラフコンポーネント、完全なデータベース統合、観測対象中心の設計アーキテクチャ、および環境ごとに最適化された統一設定管理システムが実現されています。
 
 ### ✅ Supabaseデータベース統合完了
 

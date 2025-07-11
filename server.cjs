@@ -6,94 +6,127 @@ const { promises: fsPromises } = fs;
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-// 設定の読み込み（.envから）
-const CONFIG = {
-  // サーバー設定
-  PORT: parseInt(process.env.PORT) || 3001,
-  EXPRESS_JSON_LIMIT: process.env.EXPRESS_JSON_LIMIT || '50mb',
+// 環境別設定をCJS形式で読み込み
+const getServerConfig = () => {
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const isDevelopment = nodeEnv === 'development';
+  const isProduction = nodeEnv === 'production';
   
-  // ディレクトリ設定
-  DATA_ROOT_DIR: process.env.DATA_ROOT_DIR || 'data_accounts',
-  USERS_FILE_NAME: process.env.USERS_FILE_NAME || 'users.json',
-  STATIC_DIST_DIR: process.env.STATIC_DIST_DIR || 'dist',
-  AVATARS_DIR: process.env.AVATARS_DIR || 'public/avatars',
-  
-  // Supabase設定
-  SUPABASE_URL: process.env.VITE_SUPABASE_URL,
-  SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
-  
-  // データソース設定
-  DATA_SOURCE: process.env.VITE_DATA_SOURCE || 'supabase',
-  
-  // 環境設定
-  NODE_ENV: process.env.NODE_ENV || 'development'
+  return {
+    // 環境情報
+    NODE_ENV: nodeEnv,
+    isDevelopment,
+    isProduction,
+    
+    // サーバー設定
+    PORT: parseInt(process.env.PORT) || 3001,
+    EXPRESS_JSON_LIMIT: process.env.EXPRESS_JSON_LIMIT || '50mb',
+    
+    // パス設定
+    PATHS: {
+      dataDir: process.env.DATA_ROOT_DIR || 'data_accounts',
+      usersFile: process.env.USERS_FILE_NAME || 'users.json',
+      staticDir: process.env.STATIC_DIST_DIR || 'dist',
+      avatarsDir: process.env.AVATARS_DIR || 'public/avatars',
+    },
+    
+    // Supabase設定
+    SUPABASE: {
+      url: process.env.VITE_SUPABASE_URL,
+      anonKey: process.env.VITE_SUPABASE_ANON_KEY,
+    },
+    
+    // データソース設定
+    DATA_SOURCE: process.env.VITE_DATA_SOURCE || 'supabase',
+    
+    // CORS設定（環境別）
+    CORS: {
+      origin: isDevelopment 
+        ? [`http://localhost:${parseInt(process.env.VITE_PORT) || 5173}`]
+        : (process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['*']),
+      credentials: true,
+    }
+  };
 };
 
 // 設定の検証
-const validateConfig = () => {
+const validateServerConfig = (config) => {
   const errors = [];
   
   // 必須環境変数のチェック
-  if (!CONFIG.SUPABASE_URL) {
+  if (!config.SUPABASE.url) {
     errors.push('VITE_SUPABASE_URL が設定されていません');
   }
-  if (!CONFIG.SUPABASE_ANON_KEY) {
+  if (!config.SUPABASE.anonKey) {
     errors.push('VITE_SUPABASE_ANON_KEY が設定されていません');
   }
   
   // ポート番号の検証
-  if (isNaN(CONFIG.PORT) || CONFIG.PORT < 1 || CONFIG.PORT > 65535) {
-    errors.push(`無効なポート番号: ${CONFIG.PORT}`);
+  if (isNaN(config.PORT) || config.PORT < 1 || config.PORT > 65535) {
+    errors.push(`無効なポート番号: ${config.PORT}`);
   }
   
   // データソース設定の検証
-  if (!['supabase', 'vault'].includes(CONFIG.DATA_SOURCE)) {
-    errors.push(`無効なデータソース: ${CONFIG.DATA_SOURCE} (supabase または vault である必要があります)`);
+  if (!['supabase', 'vault'].includes(config.DATA_SOURCE)) {
+    errors.push(`無効なデータソース: ${config.DATA_SOURCE} (supabase または vault である必要があります)`);
   }
   
   if (errors.length > 0) {
-    console.error('❌ 設定エラーが検出されました:');
+    console.error('❌ サーバー設定エラーが検出されました:');
     errors.forEach(error => console.error(`  - ${error}`));
     console.error('\n.envファイルを確認してください。');
     process.exit(1);
   }
   
-  // 設定内容のログ出力（開発環境のみ）
-  if (CONFIG.NODE_ENV === 'development') {
-    console.log('⚙️  設定情報:');
-    console.log(`  - ポート: ${CONFIG.PORT}`);
-    console.log(`  - データソース: ${CONFIG.DATA_SOURCE}`);
-    console.log(`  - 環境: ${CONFIG.NODE_ENV}`);
-    console.log(`  - JSONリミット: ${CONFIG.EXPRESS_JSON_LIMIT}`);
+  return config;
+};
+
+// 設定のログ出力
+const logServerConfig = (config) => {
+  if (config.isDevelopment) {
+    console.log('⚙️  サーバー設定情報:');
+    console.log(`  - 環境: ${config.NODE_ENV}`);
+    console.log(`  - ポート: ${config.PORT}`);
+    console.log(`  - データソース: ${config.DATA_SOURCE}`);
+    console.log(`  - JSONリミット: ${config.EXPRESS_JSON_LIMIT}`);
+    console.log(`  - CORS Origin: ${config.CORS.origin.join(', ')}`);
+    console.log(`  - 静的ファイル: ${config.PATHS.staticDir}`);
+    console.log(`  - データディレクトリ: ${config.PATHS.dataDir}`);
   }
 };
 
-// 設定検証を実行
-validateConfig();
+// 設定を取得・検証
+const CONFIG = validateServerConfig(getServerConfig());
+logServerConfig(CONFIG);
 
 const app = express();
 
 // Supabaseクライアントの初期化
 const supabase = createClient(
-  CONFIG.SUPABASE_URL,
-  CONFIG.SUPABASE_ANON_KEY
+  CONFIG.SUPABASE.url,
+  CONFIG.SUPABASE.anonKey
 );
 
 // ミドルウェア
-app.use(cors());
+app.use(cors(CONFIG.CORS));
 app.use(express.json({ limit: CONFIG.EXPRESS_JSON_LIMIT }));
-app.use(express.static(CONFIG.STATIC_DIST_DIR)); // Viteのビルドディレクトリを提供
-app.use('/product/dist', express.static(CONFIG.STATIC_DIST_DIR)); // プロダクション環境用のパス
+
+// 静的ファイル配信（環境別パス対応）
+app.use(express.static(CONFIG.PATHS.staticDir)); // Viteのビルドディレクトリを提供
+if (CONFIG.isProduction) {
+  // プロダクション環境でのパス設定
+  app.use('/product/dist', express.static(CONFIG.PATHS.staticDir));
+  app.use('/product/dist/avatars', express.static(CONFIG.PATHS.avatarsDir));
+}
 
 // アバター画像の静的配信（ローカル・本番共通）
-app.use('/avatars', express.static(CONFIG.AVATARS_DIR));
-app.use('/product/dist/avatars', express.static(CONFIG.AVATARS_DIR));
+app.use('/avatars', express.static(CONFIG.PATHS.avatarsDir));
 
 // データルートディレクトリ
-const DATA_ROOT = path.join(__dirname, CONFIG.DATA_ROOT_DIR);
+const DATA_ROOT = path.join(__dirname, CONFIG.PATHS.dataDir);
 
 // ユーザー管理用のファイルパス
-const USERS_FILE = path.join(DATA_ROOT, CONFIG.USERS_FILE_NAME);
+const USERS_FILE = path.join(DATA_ROOT, CONFIG.PATHS.usersFile);
 
 // 注意: EC2 API設定は削除されました。現在はSupabaseのみを使用しています。
 
@@ -946,14 +979,17 @@ app.get('*', (req, res) => {
   }
   
   // その他のリクエストはindex.htmlを返す（SPAルーティング対応）
-  res.sendFile(path.join(__dirname, CONFIG.STATIC_DIST_DIR, 'index.html'));
+  res.sendFile(path.join(__dirname, CONFIG.PATHS.staticDir, 'index.html'));
 });
 
 app.listen(CONFIG.PORT, () => {
-  console.log(`サーバーがポート ${CONFIG.PORT} で起動しました`);
-  console.log(`ダッシュボード: http://localhost:${CONFIG.PORT}`);
-  console.log(`API: http://localhost:${CONFIG.PORT}/api`);
-  console.log(`データディレクトリ: ${DATA_ROOT}`);
-  console.log(`アバターディレクトリ: ${CONFIG.AVATARS_DIR}`);
-  console.log(`Supabase URL: ${CONFIG.SUPABASE_URL}`);
+  console.log(`🚀 サーバーがポート ${CONFIG.PORT} で起動しました`);
+  console.log(`📊 ダッシュボード: http://localhost:${CONFIG.PORT}`);
+  console.log(`🔌 API: http://localhost:${CONFIG.PORT}/api`);
+  if (CONFIG.isDevelopment) {
+    console.log(`📁 データディレクトリ: ${DATA_ROOT}`);
+    console.log(`🖼️  アバターディレクトリ: ${CONFIG.PATHS.avatarsDir}`);
+    console.log(`🗄️  Supabase URL: ${CONFIG.SUPABASE.url}`);
+  }
+  console.log(`✅ 環境: ${CONFIG.NODE_ENV} | データソース: ${CONFIG.DATA_SOURCE}`);
 }); 
