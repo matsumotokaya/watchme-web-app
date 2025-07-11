@@ -86,9 +86,17 @@ const useVaultAPI = (endpoint, deviceId, selectedDate) => {
         url = `/api/proxy/opensmile-summary-supabase/${deviceId}/${selectedDate}`;
         console.log(`🔄 Supabase経由で${endpoint}データを取得中...`);
       } else {
-        // Vaultモード（デフォルト）
-        url = `/api/proxy/${endpoint}/${deviceId}/${selectedDate}`;
-        console.log(`🔄 プロキシ経由で${endpoint}データを取得中...`);
+        // Supabaseモードがデフォルト（古いVaultエンドポイントは削除済み）
+        if (endpoint === 'emotion-timeline') {
+          url = `/api/proxy/emotion-timeline-supabase/${deviceId}/${selectedDate}`;
+        } else if (endpoint === 'sed-summary') {
+          url = `/api/proxy/sed-summary-supabase/${deviceId}/${selectedDate}`;
+        } else if (endpoint === 'opensmile-summary') {
+          url = `/api/proxy/opensmile-summary-supabase/${deviceId}/${selectedDate}`;
+        } else {
+          throw new Error(`未サポートのエンドポイント: ${endpoint}`);
+        }
+        console.log(`🔄 Supabase経由で${endpoint}データを取得中...`);
       }
       
       console.log('🌐 リクエストURL (プロキシ):', url);

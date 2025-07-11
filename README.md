@@ -482,18 +482,12 @@ watchme_v8/
 
 `server.cjs`に以下のプロキシエンドポイントが実装されています。フロントエンドからはこちらを呼び出してください。
 
-##### Vault API モード（従来）
--   **心理グラフ (感情タイムライン)**:
-    -   `GET /api/proxy/emotion-timeline/:deviceId/:date`
-    -   転送先: `https://api.hey-watch.me/api/users/:deviceId/logs/:date/emotion-timeline`
-
--   **行動グラフ (SEDサマリー)**:
-    -   `GET /api/proxy/sed-summary/:deviceId/:date`
-    -   転送先: `https://api.hey-watch.me/api/users/:deviceId/logs/:date/sed-summary`
-
--   **感情グラフ (OpenSMILEサマリー)**:
-    -   `GET /api/proxy/opensmile-summary/:deviceId/:date`
-    -   転送先: `https://api.hey-watch.me/api/users/:deviceId/logs/:date/opensmile-summary`
+##### ⚠️ 古いVault API エンドポイント（削除済み）
+- **削除されたエンドポイント**: 
+  - `/api/proxy/emotion-timeline/:deviceId/:date`（削除済み）
+  - `/api/proxy/sed-summary/:deviceId/:date`（削除済み）
+  - `/api/proxy/opensmile-summary/:deviceId/:date`（削除済み）
+- **理由**: Supabaseデータベースへの完全移行により、古いEC2プロキシエンドポイントは不要となりました。
 
 ##### Supabase モード（推奨）
 -   **心理グラフ (感情タイムライン)**:
@@ -514,12 +508,15 @@ watchme_v8/
 
 CORSエラーは、**キャッシュされていない新しいデータ**を**フロントエンドから直接EC2 Vault APIに**取得しようとした際に初めて表面化しました。この動作は混乱を招くため、**「データ取得は必ずプロキシを介する」**というルールに統一しています。
 
-**現在の状況（2025年7月10日更新）:**
+**最新の状況（2025年7月11日更新）:**
 - **心理グラフ（感情タイムライン）**: Supabase統合完了 ✅
-- **行動グラフ（SEDサマリー）**: Supabase統合完了 ✅
+- **行動グラフ（SEDサマリー）**: Supabase統合完了 ✅  
 - **感情グラフ（OpenSMILEサマリー）**: Supabase統合完了 ✅
+- **API エンドポイント**: 冗長なEC2プロキシエンドポイントを削除、Supabaseのみに統一 ✅
+- **観測対象管理**: device_metadataテーブル統合によるアバター・情報管理システム完成 ✅
+- **ヘッダーUI**: 観測対象中心の直感的デバイス選択インターフェース完成 ✅
 
-3つのグラフコンポーネントがすべて統一されたSupabaseデータベース統合を実現しています。
+3つのグラフコンポーネント、完全なデータベース統合、および観測対象中心の設計アーキテクチャが実現されています。
 
 ### ✅ Supabaseデータベース統合完了
 
