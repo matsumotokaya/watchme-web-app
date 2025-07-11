@@ -4,6 +4,12 @@ const fs = require('fs');
 const path = require('path');
 const { promises: fsPromises } = fs;
 const { createClient } = require('@supabase/supabase-js');
+const { 
+  handleError, 
+  expressErrorHandler, 
+  asyncHandler, 
+  ERROR_CATEGORIES 
+} = require('./config/errorHandler');
 require('dotenv').config();
 
 // 環境別設定をCJS形式で読み込み
@@ -213,10 +219,20 @@ app.post('/api/users/:userId/create', async (req, res) => {
 
 
 // Supabaseからemotion-timelineデータを取得する新しいエンドポイント
-app.get('/api/proxy/emotion-timeline-supabase/:deviceId/:date', async (req, res) => {
+app.get('/api/proxy/emotion-timeline-supabase/:deviceId/:date', asyncHandler(async (req, res) => {
   const { deviceId, date } = req.params;
   
+  // リクエスト検証
+  if (!deviceId || !date) {
+    const { statusCode, response } = handleError(
+      new Error('デバイスIDと日付は必須です'), 
+      { endpoint: 'emotion-timeline-supabase', deviceId, date }
+    );
+    return res.status(statusCode).json(response);
+  }
+
   console.log(`[PROXY] Emotion Timeline from Supabase: device=${deviceId}, date=${date}`);
+  
   try {
     // vibe_whisper_summaryテーブルからデータを取得
     const { data: summaryData, error } = await supabase
@@ -227,15 +243,21 @@ app.get('/api/proxy/emotion-timeline-supabase/:deviceId/:date', async (req, res)
       .single();
     
     if (error) {
-      console.log(`[PROXY] Supabase Error:`, error);
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({ error: 'この日付のデータは見つかりません' });
-      }
-      return res.status(500).json({ error: 'データベースエラーが発生しました' });
+      const { statusCode, response } = handleError(error, {
+        endpoint: 'emotion-timeline-supabase',
+        deviceId,
+        date,
+        operation: 'supabase_query'
+      });
+      return res.status(statusCode).json(response);
     }
     
     if (!summaryData) {
-      return res.status(404).json({ error: 'この日付のデータは見つかりません' });
+      const { statusCode, response } = handleError(
+        { code: 'PGRST116', message: 'No data found' },
+        { endpoint: 'emotion-timeline-supabase', deviceId, date }
+      );
+      return res.status(statusCode).json(response);
     }
     
     // 時間ポイントを生成（00:00から23:30まで30分刻み）
@@ -248,34 +270,63 @@ app.get('/api/proxy/emotion-timeline-supabase/:deviceId/:date', async (req, res)
       return timePoints;
     };
     
-    // EmotionTimeline.jsxが期待する形式に変換
-    const emotionTimelineData = {
-      timePoints: generateTimePoints(),
-      emotionScores: summaryData.vibe_scores || [],
-      averageScore: summaryData.average_score || 0,
-      positiveHours: summaryData.positive_hours || 0,
-      negativeHours: summaryData.negative_hours || 0,
-      neutralHours: summaryData.neutral_hours || 0,
-      insights: summaryData.insights || [],
-      emotionChanges: summaryData.vibe_changes || [],
-      date: summaryData.date,
-      processedAt: summaryData.processed_at,
-      deviceId: summaryData.device_id
-    };
+    // データ変換処理
+    try {
+      // EmotionTimeline.jsxが期待する形式に変換
+      const emotionTimelineData = {
+        timePoints: generateTimePoints(),
+        emotionScores: summaryData.vibe_scores || [],
+        averageScore: summaryData.average_score || 0,
+        positiveHours: summaryData.positive_hours || 0,
+        negativeHours: summaryData.negative_hours || 0,
+        neutralHours: summaryData.neutral_hours || 0,
+        insights: summaryData.insights || [],
+        emotionChanges: summaryData.vibe_changes || [],
+        date: summaryData.date,
+        processedAt: summaryData.processed_at,
+        deviceId: summaryData.device_id
+      };
+      
+      console.log(`[PROXY] Emotion Timeline data retrieved successfully for ${deviceId}/${date}`);
+      res.json(emotionTimelineData);
+      
+    } catch (dataError) {
+      const { statusCode, response } = handleError(dataError, {
+        endpoint: 'emotion-timeline-supabase',
+        deviceId,
+        date,
+        operation: 'data_transformation',
+        originalData: summaryData
+      });
+      return res.status(statusCode).json(response);
+    }
     
-    console.log(`[PROXY] Supabase data retrieved successfully`);
-    res.json(emotionTimelineData);
   } catch (error) {
-    console.log(`[PROXY] Emotion Timeline from Supabase取得で問題が発生:`, error);
-    res.status(500).json({ error: 'データ取得中に予期しないエラーが発生しました。' });
+    const { statusCode, response } = handleError(error, {
+      endpoint: 'emotion-timeline-supabase',
+      deviceId,
+      date,
+      operation: 'general_error'
+    });
+    return res.status(statusCode).json(response);
   }
-});
+}));
 
 // Supabaseからsed-summaryデータを取得する新しいエンドポイント
-app.get('/api/proxy/sed-summary-supabase/:deviceId/:date', async (req, res) => {
+app.get('/api/proxy/sed-summary-supabase/:deviceId/:date', asyncHandler(async (req, res) => {
   const { deviceId, date } = req.params;
   
+  // リクエスト検証
+  if (!deviceId || !date) {
+    const { statusCode, response } = handleError(
+      new Error('デバイスIDと日付は必須です'), 
+      { endpoint: 'sed-summary-supabase', deviceId, date }
+    );
+    return res.status(statusCode).json(response);
+  }
+  
   console.log(`[PROXY] SED Summary from Supabase: device=${deviceId}, date=${date}`);
+  
   try {
     // behavior_summaryテーブルからデータを取得
     const { data: summaryData, error } = await supabase
@@ -286,15 +337,21 @@ app.get('/api/proxy/sed-summary-supabase/:deviceId/:date', async (req, res) => {
       .single();
     
     if (error) {
-      console.log(`[PROXY] Supabase Error:`, error);
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({ error: 'この日付のSEDデータは見つかりません' });
-      }
-      return res.status(500).json({ error: 'データベースエラーが発生しました' });
+      const { statusCode, response } = handleError(error, {
+        endpoint: 'sed-summary-supabase',
+        deviceId,
+        date,
+        operation: 'supabase_query'
+      });
+      return res.status(statusCode).json(response);
     }
     
     if (!summaryData) {
-      return res.status(404).json({ error: 'この日付のSEDデータは見つかりません' });
+      const { statusCode, response } = handleError(
+        { code: 'PGRST116', message: 'No SED data found' },
+        { endpoint: 'sed-summary-supabase', deviceId, date }
+      );
+      return res.status(statusCode).json(response);
     }
     
     // Supabaseの新形式からVault API形式に変換
@@ -334,21 +391,50 @@ app.get('/api/proxy/sed-summary-supabase/:deviceId/:date', async (req, res) => {
       };
     };
     
-    const vaultFormatData = convertToVaultFormat(summaryData);
+    // データ変換処理
+    try {
+      const vaultFormatData = convertToVaultFormat(summaryData);
+      
+      console.log(`[PROXY] SED Summary data converted successfully for ${deviceId}/${date}`);
+      res.json(vaultFormatData);
+      
+    } catch (conversionError) {
+      const { statusCode, response } = handleError(conversionError, {
+        endpoint: 'sed-summary-supabase',
+        deviceId,
+        date,
+        operation: 'data_conversion',
+        originalData: summaryData
+      });
+      return res.status(statusCode).json(response);
+    }
     
-    console.log(`[PROXY] Supabase SED data converted to Vault format successfully`);
-    res.json(vaultFormatData);
   } catch (error) {
-    console.log(`[PROXY] SED Summary from Supabase取得で問題が発生:`, error);
-    res.status(500).json({ error: 'データ取得中に予期しないエラーが発生しました。' });
+    const { statusCode, response } = handleError(error, {
+      endpoint: 'sed-summary-supabase',
+      deviceId,
+      date,
+      operation: 'general_error'
+    });
+    return res.status(statusCode).json(response);
   }
-});
+}));
 
 // Supabaseからopensmile-summaryデータを取得する新しいエンドポイント
-app.get('/api/proxy/opensmile-summary-supabase/:deviceId/:date', async (req, res) => {
+app.get('/api/proxy/opensmile-summary-supabase/:deviceId/:date', asyncHandler(async (req, res) => {
   const { deviceId, date } = req.params;
   
+  // リクエスト検証
+  if (!deviceId || !date) {
+    const { statusCode, response } = handleError(
+      new Error('デバイスIDと日付は必須です'), 
+      { endpoint: 'opensmile-summary-supabase', deviceId, date }
+    );
+    return res.status(statusCode).json(response);
+  }
+  
   console.log(`[PROXY] OpenSMILE Summary from Supabase: device=${deviceId}, date=${date}`);
+  
   try {
     // emotion_opensmile_summaryテーブルからデータを取得
     const { data: summaryData, error } = await supabase
@@ -359,31 +445,57 @@ app.get('/api/proxy/opensmile-summary-supabase/:deviceId/:date', async (req, res
       .single();
     
     if (error) {
-      console.log(`[PROXY] Supabase query error:`, error);
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({ 
-          error: 'この日付の感情グラフデータは見つかりません',
-          date: date 
-        });
-      }
-      throw error;
+      const { statusCode, response } = handleError(error, {
+        endpoint: 'opensmile-summary-supabase',
+        deviceId,
+        date,
+        operation: 'supabase_query'
+      });
+      return res.status(statusCode).json(response);
     }
     
-    // EmotionGraph.jsxが期待する形式に変換
-    // emotion_graphフィールドのJSONBデータをそのまま使用
-    const opensmileData = {
-      date: summaryData.date,
-      emotion_graph: summaryData.emotion_graph || [],
-      device_id: summaryData.device_id,
-      created_at: summaryData.created_at
-    };
+    if (!summaryData) {
+      const { statusCode, response } = handleError(
+        { code: 'PGRST116', message: 'No emotion graph data found' },
+        { endpoint: 'opensmile-summary-supabase', deviceId, date }
+      );
+      return res.status(statusCode).json(response);
+    }
     
-    res.json(opensmileData);
+    // データ変換処理
+    try {
+      // EmotionGraph.jsxが期待する形式に変換
+      const opensmileData = {
+        date: summaryData.date,
+        emotion_graph: summaryData.emotion_graph || [],
+        device_id: summaryData.device_id,
+        created_at: summaryData.created_at
+      };
+      
+      console.log(`[PROXY] OpenSMILE data retrieved successfully for ${deviceId}/${date}`);
+      res.json(opensmileData);
+      
+    } catch (dataError) {
+      const { statusCode, response } = handleError(dataError, {
+        endpoint: 'opensmile-summary-supabase',
+        deviceId,
+        date,
+        operation: 'data_transformation',
+        originalData: summaryData
+      });
+      return res.status(statusCode).json(response);
+    }
+    
   } catch (error) {
-    console.log(`[PROXY] OpenSMILE Summary from Supabase取得で問題が発生:`, error);
-    res.status(500).json({ error: '感情グラフデータ取得中に予期しないエラーが発生しました。' });
+    const { statusCode, response } = handleError(error, {
+      endpoint: 'opensmile-summary-supabase',
+      deviceId,
+      date,
+      operation: 'general_error'
+    });
+    return res.status(statusCode).json(response);
   }
-});
+}));
 
 
 // 注意: EC2からの手動データ取得エンドポイントは削除されました。現在はSupabaseのみを使用しています。
@@ -980,6 +1092,18 @@ app.get('*', (req, res) => {
   
   // その他のリクエストはindex.htmlを返す（SPAルーティング対応）
   res.sendFile(path.join(__dirname, CONFIG.PATHS.staticDir, 'index.html'));
+});
+
+// グローバルエラーハンドラーの追加
+app.use(expressErrorHandler);
+
+// 404ハンドラー（APIエンドポイント以外）
+app.use((req, res) => {
+  const { statusCode, response } = handleError(
+    new Error('リクエストされたページが見つかりません'),
+    { url: req.url, method: req.method }
+  );
+  res.status(404).json(response);
 });
 
 app.listen(CONFIG.PORT, () => {
