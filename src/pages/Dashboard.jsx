@@ -11,6 +11,8 @@ import DateNavigation from '../components/common/DateNavigation';
 import ErrorBoundary from '../components/ErrorBoundary';
 import Avatar from '../components/common/Avatar';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { getUserDevices } from '../services/userService';
+import { useDeviceAvatar } from '../hooks/useDeviceAvatar';
 import { 
   getEmotionTimelineData, 
   getEventLogsData 
@@ -173,6 +175,12 @@ const Dashboard = () => {
   
   // 選択されたデバイスID
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  
+  // デバイス一覧
+  const [devices, setDevices] = useState([]);
+  
+  // 選択されたデバイスのアバター
+  const { avatarUrl: selectedDeviceAvatarUrl } = useDeviceAvatar(selectedDeviceId);
 
   console.log('Dashboard 初期化:', {
     user: user?.email,
@@ -181,8 +189,35 @@ const Dashboard = () => {
     swipeIndex,
     emotionTimelineData: emotionTimelineData ? 'あり' : 'なし',
     eventLogsData: eventLogsData ? 'あり' : 'なし',
-    isLoading
+    isLoading,
+    selectedDeviceId,
+    devices: devices.length
   });
+
+  // デバイス一覧を読み込み
+  useEffect(() => {
+    const loadDevices = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const userDevices = await getUserDevices(user.id);
+        setDevices(userDevices);
+        
+        // 最初のアクティブなデバイスを自動選択
+        if (!selectedDeviceId && userDevices.length > 0) {
+          const activeDevice = userDevices.find(d => d.status === 'active') || userDevices[0];
+          if (activeDevice) {
+            setSelectedDeviceId(activeDevice.device_id);
+          }
+        }
+      } catch (error) {
+        console.error('デバイス取得エラー:', error);
+        setDevices([]);
+      }
+    };
+
+    loadDevices();
+  }, [user?.id]);
 
   // データ読み込み
   useEffect(() => {
@@ -431,25 +466,33 @@ const Dashboard = () => {
     }
   };
 
-  // ヘッダーに表示するユーザーメニュー
-  const headerUserMenu = (
+  // ヘッダーに表示するデバイスメニュー
+  const headerDeviceMenu = (
     <div className="relative">
       <div 
         className="flex items-center cursor-pointer"
         onClick={() => setShowUserMenu(!showUserMenu)}
       >
-        <Avatar
-          src={userProfile?.profile_image_url}
-          name={userProfile?.name || user?.email || 'ゲスト'}
-          size="small"
-          alt={userProfile?.name || user?.email || 'ゲスト'}
-        />
+        {/* デバイスアバター */}
+        <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+          {selectedDeviceAvatarUrl ? (
+            <img 
+              src={selectedDeviceAvatarUrl} 
+              alt="Device" 
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          )}
+        </div>
         <div className="ml-2">
           <p className="text-sm font-medium text-gray-800">
-            {userProfile?.name || user?.email?.split('@')[0] || 'ゲスト'}
+            {devices.find(d => d.device_id === selectedDeviceId)?.device_name || 'デバイス未選択'}
           </p>
           <p className="text-xs text-gray-500">
-            {userProfile?.status || 'guest'}
+            {selectedDeviceId ? selectedDeviceId.substring(0, 8) + '...' : 'デバイスを選択'}
           </p>
         </div>
         <svg className="ml-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -457,14 +500,45 @@ const Dashboard = () => {
         </svg>
       </div>
       
-      {/* ユーザーメニュードロップダウン */}
+      {/* デバイス選択ドロップダウン */}
       {showUserMenu && (
-        <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg overflow-hidden z-10 w-48">
+        <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg overflow-hidden z-10 w-64">
           <div className="p-2">
             <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
-              アカウントメニュー
+              デバイス選択
             </div>
-            <div className="mt-1">
+            <div className="mt-1 space-y-1">
+              {devices.map((device) => (
+                <button
+                  key={device.device_id}
+                  onClick={() => {
+                    setSelectedDeviceId(device.device_id);
+                    setShowUserMenu(false);
+                  }}
+                  className={`w-full text-left px-2 py-2 text-sm rounded-md flex items-center space-x-2 ${
+                    selectedDeviceId === device.device_id 
+                      ? 'bg-blue-50 text-blue-700' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{device.device_name || `デバイス ${devices.indexOf(device) + 1}`}</p>
+                    <p className="text-xs text-gray-500">{device.device_id.substring(0, 12)}...</p>
+                  </div>
+                  {selectedDeviceId === device.device_id && (
+                    <svg className="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-200">
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
@@ -493,7 +567,7 @@ const Dashboard = () => {
         userData={userProfile || { name: user?.email }}
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        headerContent={headerUserMenu}
+        headerContent={headerDeviceMenu}
         dateNavigation={dateNavigationComponent}
         hideNotifications={false}
       >

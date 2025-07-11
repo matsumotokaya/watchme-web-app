@@ -138,7 +138,7 @@ const AvatarUploader = ({ currentAvatar, onAvatarChange, onUploadComplete }) => 
     <div className="w-full">
       {/* クロッパーモーダル */}
       {showCropper && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-[110] flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-4 max-w-lg w-full">
             <h3 className="text-lg font-semibold mb-4">画像を調整</h3>
             
