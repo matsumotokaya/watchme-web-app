@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 const TimeSlotEventTable = ({ timeBlocks }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   // 時間スロットを生成（00:00～23:30の48スロット）
   const generateTimeSlots = () => {
@@ -44,7 +44,7 @@ const TimeSlotEventTable = ({ timeBlocks }) => {
   if (!timeBlocks) {
     return (
       <div className="bg-white rounded-2xl shadow-md p-4 md:p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">🕐 時間別イベントログ</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-4">行動ログ</h2>
         <div className="h-64 flex items-center justify-center text-gray-500">
           <div className="text-center">
             <div className="text-2xl mb-2">⏰</div>
@@ -59,7 +59,7 @@ const TimeSlotEventTable = ({ timeBlocks }) => {
     <div className="bg-white rounded-2xl shadow-md p-4 md:p-6">
       <div className="mb-4">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-xl font-bold text-gray-800">🕐 時間別イベントログ</h2>
+          <h2 className="text-xl font-bold text-gray-800">行動ログ</h2>
           <div className="text-sm text-gray-500">
             30分刻み・48スロット
           </div>
@@ -91,7 +91,7 @@ const TimeSlotEventTable = ({ timeBlocks }) => {
 
       {/* イベントテーブル */}
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="max-h-96 overflow-y-auto">
+        <div className="overflow-y-auto">
           <table className="w-full">
             <thead className="bg-gray-100 sticky top-0">
               <tr>
@@ -111,10 +111,10 @@ const TimeSlotEventTable = ({ timeBlocks }) => {
                     index % 2 === 0 ? 'bg-opacity-30' : 'bg-opacity-50'
                   } hover:bg-opacity-70 transition-colors duration-150`}
                 >
-                  <td className="px-3 py-3 text-sm font-mono font-medium text-gray-900">
+                  <td className="px-3 py-2 text-sm font-mono font-medium text-gray-900">
                     {slot.display}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     {isNoData(slot.events) ? (
                       <span className="text-gray-400 italic text-sm">No data</span>
                     ) : (
@@ -122,7 +122,7 @@ const TimeSlotEventTable = ({ timeBlocks }) => {
                         {slot.events.slice(0, 10).map((event, eventIndex) => (
                           <span
                             key={eventIndex}
-                            className="inline-block px-2 py-1 text-xs bg-white bg-opacity-80 text-gray-700 rounded-md border border-gray-200 shadow-sm"
+                            className="inline-block px-1.5 py-0.5 text-xs bg-white bg-opacity-80 text-gray-700 rounded border border-gray-200"
                           >
                             {event}
                           </span>

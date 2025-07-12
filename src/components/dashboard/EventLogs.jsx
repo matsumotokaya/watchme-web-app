@@ -61,10 +61,6 @@ const BehaviorGraph = ({ userId, selectedDate }) => {
         <div className="mb-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-800">行動グラフ</h2>
-            <RefreshButton 
-              onClick={refresh} 
-              isRefreshing={isRefreshing}
-            />
           </div>
         </div>
 
@@ -73,6 +69,16 @@ const BehaviorGraph = ({ userId, selectedDate }) => {
           dataType="行動グラフデータ" 
           errorCode={errorCode}
         />
+        
+        <div className="mt-4 text-center">
+          <button
+            onClick={refresh}
+            disabled={isRefreshing}
+            className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isRefreshing ? '更新中...' : 'データを更新'}
+          </button>
+        </div>
       </div>
     );
   }
@@ -84,47 +90,11 @@ const BehaviorGraph = ({ userId, selectedDate }) => {
         <div className="flex justify-between items-center mb-2">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-800">
-              🔊 音響イベント分析（SED）
+              行動グラフ
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              Sound Event Detection - 音響環境の詳細分析結果
+              総イベント数 {sedData.total_events?.toLocaleString() || '0'} | イベント種類 {sedData.summary_ranking?.length || 0}
             </p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="text-right text-sm text-gray-600">
-              <div className="font-semibold text-blue-700">
-                {sedData.date}
-              </div>
-              <div className="text-xs">
-                総イベント: {sedData.total_events?.toLocaleString() || 'N/A'}
-              </div>
-            </div>
-            <RefreshButton 
-              onClick={refresh} 
-              isRefreshing={isRefreshing}
-            />
-          </div>
-        </div>
-        
-        {/* 分析期間とサマリー */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <div className="bg-white bg-opacity-60 rounded-lg p-3">
-            <div className="text-xs text-gray-600">分析期間</div>
-            <div className="font-semibold text-gray-800">
-              {sedData.analysis_period || '24 hours'}
-            </div>
-          </div>
-          <div className="bg-white bg-opacity-60 rounded-lg p-3">
-            <div className="text-xs text-gray-600">イベント種類</div>
-            <div className="font-semibold text-gray-800">
-              {sedData.summary_ranking?.length || 0} 種類
-            </div>
-          </div>
-          <div className="bg-white bg-opacity-60 rounded-lg p-3">
-            <div className="text-xs text-gray-600">時間スロット</div>
-            <div className="font-semibold text-gray-800">
-              {sedData.time_blocks ? Object.keys(sedData.time_blocks).length : 0} / 48
-            </div>
           </div>
         </div>
       </div>
@@ -137,12 +107,13 @@ const BehaviorGraph = ({ userId, selectedDate }) => {
 
       {/* フッター情報 */}
       <div className="bg-gray-50 rounded-lg p-4 text-center">
-        <div className="text-xs text-gray-500">
-          Generated at: {sedData.generated_at ? new Date(sedData.generated_at).toLocaleString('ja-JP') : '不明'}
-        </div>
-        <div className="text-xs text-gray-400 mt-1">
-          WatchMe v8 - Sound Event Detection Analysis
-        </div>
+        <button
+          onClick={refresh}
+          disabled={isRefreshing}
+          className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isRefreshing ? '更新中...' : 'データを更新'}
+        </button>
       </div>
     </div>
   );

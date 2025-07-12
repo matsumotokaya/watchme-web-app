@@ -124,17 +124,14 @@ const EventRankingChart = ({ summaryRanking }) => {
     <div className="bg-white rounded-2xl shadow-md p-4 md:p-6">
       <div className="mb-4">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-xl font-bold text-gray-800">🔝 イベントランキング（Top10）</h2>
-          <div className="text-sm text-gray-500">
-            総イベント数: <span className="font-semibold">{summaryRanking.reduce((sum, item) => sum + item.count, 0).toLocaleString()}</span>
-          </div>
+          <h2 className="text-xl font-bold text-gray-800">行動ランキング</h2>
         </div>
         <p className="text-sm text-gray-600">
           音響イベントの発生回数ランキング（降順）
         </p>
       </div>
       
-      <div className="h-80 md:h-96 relative">
+      <div className="h-48 md:h-56 relative">
         <Bar data={chartData} options={chartOptions} />
       </div>
       

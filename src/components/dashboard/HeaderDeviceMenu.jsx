@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 /**
  * ダッシュボードヘッダーに表示するデバイス選択メニュー
@@ -12,6 +12,26 @@ const HeaderDeviceMenu = ({
   onLogout 
 }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  // メニューの外側をクリックしたときに閉じる
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   // 選択中のデバイスのメタデータを取得
   const selectedDeviceMetadata = selectedDeviceId ? devicesMetadata[selectedDeviceId] : null;
@@ -29,7 +49,7 @@ const HeaderDeviceMenu = ({
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <div 
         className="flex items-center cursor-pointer"
         onClick={() => setShowUserMenu(!showUserMenu)}
@@ -125,16 +145,6 @@ const HeaderDeviceMenu = ({
                   利用可能なデバイスがありません
                 </div>
               )}
-            </div>
-            
-            {/* ログアウトボタン */}
-            <div className="mt-3 pt-3 border-t border-gray-200">
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
-              >
-                ログアウト
-              </button>
             </div>
           </div>
         </div>

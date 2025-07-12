@@ -254,10 +254,6 @@ const VibeGraph = ({ deviceId, selectedDate }) => {
       <div className="mb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-800">心理グラフ</h2>
-          <RefreshButton 
-            onClick={refresh} 
-            isRefreshing={isRefreshing}
-          />
         </div>
       </div>
 
@@ -265,11 +261,22 @@ const VibeGraph = ({ deviceId, selectedDate }) => {
         <LoadingSpinner />
       ) : error ? (
         // エラーがある場合は、NoDataMessageのみ表示（エラーコード付き）
-        <NoDataMessage 
-          selectedDate={selectedDate} 
-          dataType="心理グラフデータ" 
-          errorCode={errorCode}
-        />
+        <>
+          <NoDataMessage 
+            selectedDate={selectedDate} 
+            dataType="心理グラフデータ" 
+            errorCode={errorCode}
+          />
+          <div className="mt-4 text-center">
+            <button
+              onClick={refresh}
+              disabled={isRefreshing}
+              className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRefreshing ? '更新中...' : 'データを更新'}
+            </button>
+          </div>
+        </>
       ) : data ? (
         <>
           <div className="h-64 md:h-80 relative">
@@ -305,6 +312,16 @@ const VibeGraph = ({ deviceId, selectedDate }) => {
           </div>
           
           {renderEmotionChanges()}
+          
+          <div className="mt-6 text-center">
+            <button
+              onClick={refresh}
+              disabled={isRefreshing}
+              className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRefreshing ? '更新中...' : 'データを更新'}
+            </button>
+          </div>
         </>
       ) : (
         <NoDataMessage selectedDate={selectedDate} dataType="心理グラフデータ" />

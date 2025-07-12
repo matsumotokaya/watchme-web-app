@@ -5,12 +5,14 @@ import { useAuth } from '../hooks/useAuth';
 import { useAvatar } from '../hooks/useAvatar';
 import AvatarUploader from '../components/profile/AvatarUploader';
 import { getUserDevices } from '../services/userService';
+import { getDeviceMetadata } from '../services/deviceService';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, userProfile, signOut } = useAuth();
   const { avatarUrl, uploadAvatar, loading: avatarLoading } = useAvatar();
   const [devices, setDevices] = useState([]);
+  const [devicesMetadata, setDevicesMetadata] = useState({});
   const [showAvatarUploader, setShowAvatarUploader] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -22,9 +24,25 @@ const ProfilePage = () => {
       try {
         const userDevices = await getUserDevices(user.id);
         setDevices(userDevices);
+        
+        // 各デバイスのメタデータを取得
+        const metadataPromises = userDevices.map(device => 
+          getDeviceMetadata(device.device_id)
+        );
+        const metadataResults = await Promise.all(metadataPromises);
+        
+        // メタデータをオブジェクトに格納
+        const metadataMap = {};
+        userDevices.forEach((device, index) => {
+          if (metadataResults[index]) {
+            metadataMap[device.device_id] = metadataResults[index];
+          }
+        });
+        setDevicesMetadata(metadataMap);
       } catch (error) {
         console.error('デバイス取得エラー:', error);
         setDevices([]);
+        setDevicesMetadata({});
       }
     };
     
@@ -119,29 +137,187 @@ const ProfilePage = () => {
             </div>
           </div>
 
+          {/* アカウント詳細情報 */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">アカウント情報</h3>
+            <div className="space-y-3">
+              <div className="border-b pb-3">
+                <p className="text-sm text-gray-600">ユーザーID</p>
+                <p className="text-sm font-medium">{user?.id || '-'}</p>
+              </div>
+              <div className="border-b pb-3">
+                <p className="text-sm text-gray-600">メールアドレス</p>
+                <p className="text-sm font-medium">{user?.email || '-'}</p>
+              </div>
+              <div className="border-b pb-3">
+                <p className="text-sm text-gray-600">電話番号</p>
+                <p className="text-sm font-medium">{user?.phone || '-'}</p>
+              </div>
+              <div className="border-b pb-3">
+                <p className="text-sm text-gray-600">作成日時</p>
+                <p className="text-sm font-medium">
+                  {user?.created_at ? new Date(user.created_at).toLocaleString('ja-JP') : '-'}
+                </p>
+              </div>
+              <div className="border-b pb-3">
+                <p className="text-sm text-gray-600">最終ログイン</p>
+                <p className="text-sm font-medium">
+                  {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('ja-JP') : '-'}
+                </p>
+              </div>
+              <div className="border-b pb-3">
+                <p className="text-sm text-gray-600">メール確認済み</p>
+                <p className="text-sm font-medium">
+                  {user?.email_confirmed_at ? '確認済み' : '未確認'}
+                </p>
+              </div>
+              <div className="border-b pb-3">
+                <p className="text-sm text-gray-600">ロール</p>
+                <p className="text-sm font-medium">{user?.role || 'authenticated'}</p>
+              </div>
+              <div className="border-b pb-3">
+                <p className="text-sm text-gray-600">更新日時</p>
+                <p className="text-sm font-medium">
+                  {user?.updated_at ? new Date(user.updated_at).toLocaleString('ja-JP') : '-'}
+                </p>
+              </div>
+              {user?.user_metadata && Object.keys(user.user_metadata).length > 0 && (
+                <div className="pt-3">
+                  <p className="text-sm text-gray-600 mb-2">ユーザーメタデータ</p>
+                  <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto">
+                    {JSON.stringify(user.user_metadata, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* 紐付けデバイス */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">紐付けデバイス</h3>
             </div>
             {devices.length > 0 ? (
-              <div className="space-y-3">
-                {devices.map((device) => (
-                  <div key={device.device_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="space-y-4">
+                {devices.map((device, index) => (
+                  <div key={device.device_id} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-center mb-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                       </svg>
-                      <div>
-                        <p className="font-medium text-gray-800">{device.device_name || device.device_type || 'デバイス'}</p>
-                        <p className="text-sm text-gray-600">{device.device_id.substring(0, 12)}...</p>
-                      </div>
+                      <h4 className="font-medium text-gray-800">デバイス {index + 1}</h4>
                     </div>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      device.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {device.status === 'active' ? '接続中' : '未接続'}
-                    </span>
+                    <div className="space-y-2 text-sm">
+                      <div className="grid grid-cols-2 gap-x-4">
+                        <p className="text-gray-600">デバイスID:</p>
+                        <p className="font-mono text-xs break-all">{device.device_id}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4">
+                        <p className="text-gray-600">デバイス名:</p>
+                        <p>{device.device_name || '-'}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4">
+                        <p className="text-gray-600">デバイスタイプ:</p>
+                        <p>{device.device_type || '-'}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4">
+                        <p className="text-gray-600">ステータス:</p>
+                        <p className={`font-medium ${
+                          device.status === 'active' ? 'text-green-600' : 'text-gray-600'
+                        }`}>
+                          {device.status === 'active' ? '接続中' : device.status || '未接続'}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4">
+                        <p className="text-gray-600">登録日時:</p>
+                        <p>{device.created_at ? new Date(device.created_at).toLocaleString('ja-JP') : '-'}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4">
+                        <p className="text-gray-600">更新日時:</p>
+                        <p>{device.updated_at ? new Date(device.updated_at).toLocaleString('ja-JP') : '-'}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4">
+                        <p className="text-gray-600">最終接続:</p>
+                        <p>{device.last_seen_at ? new Date(device.last_seen_at).toLocaleString('ja-JP') : '-'}</p>
+                      </div>
+                      {device.model && (
+                        <div className="grid grid-cols-2 gap-x-4">
+                          <p className="text-gray-600">モデル:</p>
+                          <p>{device.model}</p>
+                        </div>
+                      )}
+                      {device.os_version && (
+                        <div className="grid grid-cols-2 gap-x-4">
+                          <p className="text-gray-600">OSバージョン:</p>
+                          <p>{device.os_version}</p>
+                        </div>
+                      )}
+                      {device.app_version && (
+                        <div className="grid grid-cols-2 gap-x-4">
+                          <p className="text-gray-600">アプリバージョン:</p>
+                          <p>{device.app_version}</p>
+                        </div>
+                      )}
+                      {device.metadata && Object.keys(device.metadata).length > 0 && (
+                        <div className="mt-2 pt-2 border-t">
+                          <p className="text-gray-600 mb-1">メタデータ:</p>
+                          <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
+                            {JSON.stringify(device.metadata, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                      
+                      {/* このデバイスの観測対象 */}
+                      {devicesMetadata[device.device_id] && (
+                        <div className="mt-3 pt-3 border-t">
+                          <h5 className="font-medium text-gray-800 mb-2">このデバイスの観測対象</h5>
+                          <div className="bg-white rounded-lg p-3">
+                            <div className="flex items-start space-x-3">
+                              {/* 観測対象アバター */}
+                              <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                {devicesMetadata[device.device_id].avatar_url ? (
+                                  <img 
+                                    src={devicesMetadata[device.device_id].avatar_url} 
+                                    alt="観測対象" 
+                                    className="w-12 h-12 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                  </svg>
+                                )}
+                              </div>
+                              
+                              {/* 観測対象情報 */}
+                              <div className="flex-1 space-y-1">
+                                <div className="grid grid-cols-2 gap-x-2 text-sm">
+                                  <p className="text-gray-600">名前:</p>
+                                  <p className="font-medium">{devicesMetadata[device.device_id].name || '未設定'}</p>
+                                </div>
+                                {devicesMetadata[device.device_id].age && (
+                                  <div className="grid grid-cols-2 gap-x-2 text-sm">
+                                    <p className="text-gray-600">年齢:</p>
+                                    <p>{devicesMetadata[device.device_id].age}歳</p>
+                                  </div>
+                                )}
+                                {devicesMetadata[device.device_id].gender && (
+                                  <div className="grid grid-cols-2 gap-x-2 text-sm">
+                                    <p className="text-gray-600">性別:</p>
+                                    <p>{devicesMetadata[device.device_id].gender}</p>
+                                  </div>
+                                )}
+                                {devicesMetadata[device.device_id].notes && (
+                                  <div className="mt-2">
+                                    <p className="text-gray-600 text-sm">備考:</p>
+                                    <p className="text-sm">{devicesMetadata[device.device_id].notes}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

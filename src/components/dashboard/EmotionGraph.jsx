@@ -142,12 +142,7 @@ const EmotionGraph = ({ userId, selectedDate }) => {
     },
     plugins: {
       title: {
-        display: true,
-        text: 'Plutchik 8感情分類 - 感情出現数の時系列変化',
-        font: {
-          size: 14,
-          weight: 'bold'
-        }
+        display: false
       },
       legend: {
         position: 'bottom',
@@ -174,12 +169,7 @@ const EmotionGraph = ({ userId, selectedDate }) => {
     scales: {
       x: {
         title: {
-          display: true,
-          text: '時刻',
-          font: {
-            size: 12,
-            weight: 'bold'
-          }
+          display: false
         },
         ticks: {
           maxTicksLimit: 12, // X軸のラベル数を制限
@@ -192,12 +182,7 @@ const EmotionGraph = ({ userId, selectedDate }) => {
       },
       y: {
         title: {
-          display: true,
-          text: '感情出現数',
-          font: {
-            size: 12,
-            weight: 'bold'
-          }
+          display: false
         },
         beginAtZero: true,
         ticks: {
@@ -232,7 +217,7 @@ const EmotionGraph = ({ userId, selectedDate }) => {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h2 className="text-xl font-bold text-gray-800">感情グラフ</h2>
-          <p className="text-sm text-gray-600 mt-1">Plutchik 8感情分類による時系列表示</p>
+          <p className="text-sm text-gray-600 mt-1">8感情の推移</p>
         </div>
         
         {/* 全体切り替えボタン */}
