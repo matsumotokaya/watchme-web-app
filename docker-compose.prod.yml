@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  watchme-web:
+    image: 754724220380.dkr.ecr.ap-southeast-2.amazonaws.com/watchme-web:latest
+    container_name: watchme-web-prod
+    ports:
+      - "127.0.0.1:3001:3001"  # localhostのみにバインド（Nginx経由でアクセス）
+    environment:
+      - NODE_ENV=production
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - VITE_DATA_SOURCE=${VITE_DATA_SOURCE:-supabase}
+      - PORT=${PORT:-3001}
+      - EXPRESS_JSON_LIMIT=${EXPRESS_JSON_LIMIT:-50mb}
+      - DATA_ROOT_DIR=${DATA_ROOT_DIR:-data_accounts}
+      - USERS_FILE_NAME=${USERS_FILE_NAME:-users.json}
+      - STATIC_DIST_DIR=${STATIC_DIST_DIR:-dist}
+      - AVATARS_DIR=${AVATARS_DIR:-public/avatars}
+      - VITE_BASE_PATH=${VITE_BASE_PATH:-/}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://dashboard.hey-watch.me}
+    volumes:
+      # データの永続化
+      - ./data_accounts:/app/data_accounts
+      - ./avatars:/app/public/avatars
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - watchme-network
+
+networks:
+  watchme-network:
+    driver: bridge

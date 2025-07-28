@@ -858,65 +858,181 @@ git checkout -b feature/機能名
 
 ## 🚀 デプロイ
 
-### 📋 本番環境更新手順（重要）
+### 🐳 ECRを使用した本番環境デプロイ（推奨）
 
-#### **1. EC2サーバーに接続**
+> **重要**: WatchMeプラットフォームは、ECRベースの統一されたデプロイ方式を使用します。
+> 従来のgit pullベースのデプロイからECR/Dockerベースのデプロイに移行しました。
+
+#### ⚠️ Viteプロジェクトのデプロイ注意事項
+
+**重要**: Viteは**ビルド時**に環境変数を静的にバンドルします。そのため：
+- ❌ **実行時の環境変数は反映されません**
+- ✅ **Dockerビルド時に環境変数を渡す必要があります**
+
+このプロジェクトでは、`deploy-ecr.sh`が自動的に`.env`ファイルから環境変数を読み込み、Dockerビルド時に渡すように設定されています。
+
+#### 🎯 デプロイ方式の特徴
+
+- ✅ **統一性**: 全APIで同じデプロイプロセス
+- ✅ **バージョン管理**: タイムスタンプ付きイメージタグ
+- ✅ **セキュリティ**: IAMロールベースの認証
+- ✅ **スケーラビリティ**: EC2、ECS、EKSで共通利用可能
+- ✅ **CI/CD対応**: GitHub Actionsとの統合容易
+- ✅ **Vite対応**: ビルド時環境変数の自動注入
+
+### 📋 本番環境デプロイ手順
+
+#### **前提条件**
+1. **ECRリポジトリ**: `754724220380.dkr.ecr.ap-southeast-2.amazonaws.com/watchme-web`
+2. **EC2インスタンス**: Ubuntu 22.04 LTS (IP: 3.24.16.82)
+3. **IAMロール**: EC2インスタンスに`EC2-ECR-Access-Role`がアタッチ済み
+4. **Docker環境**: EC2にDocker & Docker Composeインストール済み
+
+#### **Step 1: ローカルでのイメージビルドとプッシュ**
 ```bash
-ssh ubuntu@3.24.16.82
-# または
-ssh ubuntu@dashboard.hey-watch.me
+# 1. 環境変数の確認（重要！）
+# .envファイルにVITE_で始まる環境変数が正しく設定されているか確認
+cat .env | grep VITE_
+
+# 2. ローカルで変更をコミット
+git add .
+git commit -m "変更内容"
+
+# 3. ECRにDockerイメージをプッシュ
+# このスクリプトが自動的に.envファイルから環境変数を読み込み、
+# Dockerビルド時に渡します
+./deploy-ecr.sh
 ```
 
-#### **2. アプリディレクトリに移動**
+**📝 deploy-ecr.shの動作**:
+- `.env`ファイルから`VITE_`で始まる環境変数を自動読み込み
+- `docker build --build-arg`で環境変数をビルド時に注入
+- Viteがビルド時に環境変数を静的ファイルに埋め込み
+
+#### **Step 2: 本番環境でのデプロイ**
 ```bash
-cd /home/ubuntu/watchme-web-app
+# 1. EC2にSSH接続
+ssh -i ~/watchme-key.pem ubuntu@3.24.16.82
+
+# 2. デプロイディレクトリに移動
+cd ~/watchme-docker
+
+# 3. 最新イメージをプルして起動
+./run-prod.sh
 ```
 
-#### **3. 最新コードを取得**
+### 🔰 初回デプロイ時の設定
+
+初回デプロイ時のみ、EC2インスタンスに必要なファイルを配置する必要があります：
+
 ```bash
-git pull origin main
+# 1. ローカルからEC2に必要なファイルをコピー
+scp -i ~/watchme-key.pem docker-compose.prod.yml ubuntu@3.24.16.82:~/watchme-docker/
+scp -i ~/watchme-key.pem run-prod.sh ubuntu@3.24.16.82:~/watchme-docker/
+scp -i ~/watchme-key.pem .env.example ubuntu@3.24.16.82:~/watchme-docker/
+
+# 2. EC2にSSH接続
+ssh -i ~/watchme-key.pem ubuntu@3.24.16.82
+
+# 3. ディレクトリに移動
+cd ~/watchme-docker
+
+# 4. 環境変数を設定
+cp .env.example .env
+nano .env  # 実際の値を設定
+
+# 5. run-prod.shに実行権限を付与
+chmod +x run-prod.sh
+
+# 6. 初回起動
+./run-prod.sh
 ```
 
-#### **4. 依存関係を更新（新しいパッケージが追加された場合）**
-```bash
-npm install --legacy-peer-deps
+### 📁 本番環境のディレクトリ構成
+
+```
+/home/ubuntu/
+├── watchme-docker/              # Docker関連ファイル
+│   ├── docker-compose.prod.yml  # 本番用Docker Compose設定
+│   ├── run-prod.sh             # 起動スクリプト
+│   └── .env                    # 環境変数（実際の値）
+└── watchme-web-app.backup.*/   # 旧Node.jsアプリ（バックアップ）
 ```
 
-#### **5. フロントエンドをビルド（必須）**
+### 🛠️ systemdサービス管理
+
+Dockerコンテナはsystemdサービスとして管理されています：
+
 ```bash
-npm run build
+# サービスの状態確認
+sudo systemctl status watchme-docker
+
+# サービスの再起動
+sudo systemctl restart watchme-docker
+
+# サービスログの確認
+sudo journalctl -u watchme-docker -f
+
+# 自動起動の有効化（初回のみ）
+sudo systemctl enable watchme-docker
 ```
 
-#### **6. systemdサービスを再起動**
+### 📊 デプロイ後の確認
+
 ```bash
-sudo systemctl restart watchme-web-app
-```
+# 1. Dockerコンテナの状態確認
+docker ps | grep watchme-web
 
-#### **7. 動作確認**
-```bash
-# ステータス確認
-sudo systemctl status watchme-web-app
+# 2. コンテナログの確認
+docker logs -f watchme-web-prod
 
-# ログ監視
-sudo journalctl -u watchme-web-app -f
+# 3. ヘルスチェックエンドポイントの確認
+curl http://localhost:3001/health
 
-# ブラウザで確認
+# 4. ブラウザでの動作確認
 # https://dashboard.hey-watch.me
 ```
 
 ### ⚠️ 重要事項
 
-- **ビルドは必須**: 本番環境はフロントエンドを事前ビルドして配信
-- **環境変数**: `.env`ファイルの`VITE_DATA_SOURCE=supabase`設定を確認
-- **Node.js仮想環境不要**: プロジェクトディレクトリで直接`npm install`可能
+- **ビルドは自動化**: Dockerfileのマルチステージビルドで自動実行
+- **環境変数**: `.env`ファイルで管理（docker-compose.prod.ymlで読み込み）
+- **ポート設定**: Dockerは内部3001ポート、Nginxが外部からのリクエストをプロキシ
+- **データ永続化**: 必要に応じてDockerボリュームを設定
+
+### 🔄 ロールバック手順
+
+問題が発生した場合のロールバック：
+
+```bash
+# 1. 現在のイメージタグを確認
+docker images | grep watchme-web
+
+# 2. 前のバージョンのタグを指定して起動
+docker-compose -f docker-compose.prod.yml stop
+docker-compose -f docker-compose.prod.yml up -d --force-recreate \
+  -e IMAGE_TAG=20250728-123456  # 前のタイムスタンプを指定
+```
+
+### 📝 デプロイチェックリスト
+
+- [ ] ローカルでテスト完了
+- [ ] **重要**: ローカルの`.env`ファイルに`VITE_`で始まる環境変数が設定されている
+- [ ] `deploy-ecr.sh`が環境変数読み込み機能を持っている（2025年7月28日以降のバージョン）
+- [ ] ECRへのイメージプッシュ成功
+- [ ] 本番環境でのコンテナ起動確認
+- [ ] ヘルスチェックエンドポイントの応答確認
+- [ ] ブラウザでの動作確認（特にログイン画面でエラーが出ないこと）
+- [ ] ブラウザの開発者コンソールで環境変数エラーが出ていないこと
+- [ ] エラーログの確認
 
 詳細なデプロイ手順は [DEPLOY.md](DEPLOY.md) を参照してください。
 
-## 🌐 本番環境構成（デプロイ手順・稼働情報）
+## 🌐 本番環境構成（ECRベースのDocker環境）
 
 ### ✅ デプロイ先サーバー
 
-- **Amazon EC2 インスタンス**（Ubuntu）
+- **Amazon EC2 インスタンス**（Ubuntu 22.04 LTS）
 - **Elastic IP**: `3.24.16.82`
 - **ドメイン割当済み**：
   - **https://dashboard.hey-watch.me**（Nginx + リバースプロキシ経由）
@@ -924,12 +1040,12 @@ sudo journalctl -u watchme-web-app -f
 
 ---
 
-### ✅ アプリ起動方式
+### ✅ アプリ起動方式（2025年7月28日 ECRに移行）
 
-- **Dockerは使用していません**（現時点では素のNode環境）
-- アプリは `/home/ubuntu/watchme-web-app` にクローン済み
-- `nvm` を使って **Node.js v22** 系を利用
-- 本番アプリは **systemd** を使って**常駐プロセスとして管理**
+- **Dockerコンテナ**: ECRから最新イメージをプルして実行
+- **ECRリポジトリ**: `754724220380.dkr.ecr.ap-southeast-2.amazonaws.com/watchme-web`
+- **コンテナ名**: `watchme-web-prod`
+- **本番アプリは systemd を使って Dockerコンテナを管理**
 
 ---
 
@@ -937,34 +1053,120 @@ sudo journalctl -u watchme-web-app -f
 
 - **ユニットファイルの場所**：
   ```bash
-  /etc/systemd/system/watchme-web-app.service
+  /etc/systemd/system/watchme-docker.service
   ```
 
 - **実行コマンド（内部）**：
   ```bash
-  ExecStart=/home/ubuntu/.nvm/versions/node/v22.17.0/bin/npm run start
+  ExecStart=/home/ubuntu/watchme-docker/run-prod.sh
   ```
 
 - **自動起動設定済み**（サーバ再起動後も自動で復帰）
 
 - **状態確認・操作コマンド一覧**：
   ```bash
-  # ステータス確認
-  sudo systemctl status watchme-web-app
+  # systemdサービスの状態確認
+  sudo systemctl status watchme-docker
 
-  # 停止
-  sudo systemctl stop watchme-web-app
+  # Dockerコンテナの直接確認
+  docker ps | grep watchme-web
+  docker logs -f watchme-web-prod
 
-  # 再起動
-  sudo systemctl restart watchme-web-app
+  # サービス再起動（新しいイメージをプル）
+  cd ~/watchme-docker && ./run-prod.sh
 
   # ログ監視
-  sudo journalctl -u watchme-web-app -f
+  sudo journalctl -u watchme-docker -f
   ```
 
 ---
 
+### 📝 従来のNode.js環境からの移行について
+
+2025年7月28日に、従来のNode.js直接実行環境からECR/Dockerベースの環境に移行しました：
+
+- **旧環境**: `/home/ubuntu/watchme-web-app` (バックアップとして保存)
+- **新環境**: `/home/ubuntu/watchme-docker` (Docker関連ファイル)
+- **メリット**: 統一されたデプロイプロセス、バージョン管理、容易なロールバック
+
+---
+
 ## 🐛 トラブルシューティング
+
+### 🐳 ECRデプロイ関連の問題
+
+#### ⚠️ Vite環境変数が本番で反映されない（最重要）
+```bash
+# 症状: ブラウザコンソールで以下のようなエラーが表示される
+# Failed to fetch
+# TypeError: Failed to fetch
+# VITE_SUPABASE_URL: undefined
+# VITE_SUPABASE_ANON_KEY: undefined
+
+# 原因: Viteは実行時ではなくビルド時に環境変数を埋め込む
+# docker-compose.prod.ymlで環境変数を設定しても反映されない
+
+# 解決方法:
+# 1. ローカルの.envファイルを確認
+cat .env | grep VITE_
+
+# 2. deploy-ecr.shが環境変数を読み込んでいることを確認
+# スクリプト内に以下の行があることを確認：
+# export $(cat .env | grep -E '^VITE_' | xargs)
+# docker build --build-arg VITE_SUPABASE_URL="$VITE_SUPABASE_URL" ...
+
+# 3. 再度ビルドしてデプロイ
+./deploy-ecr.sh
+```
+
+#### ECRログインエラー
+```bash
+# エラー: Error response from daemon: Get https://754724220380.dkr.ecr...
+# 解決方法:
+aws ecr get-login-password --region ap-southeast-2 | \
+docker login --username AWS --password-stdin \
+754724220380.dkr.ecr.ap-southeast-2.amazonaws.com
+```
+
+#### IAMロール権限不足
+```bash
+# EC2インスタンスのIAMロールを確認
+aws sts get-caller-identity
+
+# 必要な権限:
+# - ecr:GetAuthorizationToken
+# - ecr:BatchCheckLayerAvailability
+# - ecr:GetDownloadUrlForLayer
+# - ecr:BatchGetImage
+```
+
+#### Dockerコンテナが起動しない
+```bash
+# 1. 既存コンテナの確認と削除
+docker ps -a | grep watchme-web
+docker rm -f watchme-web-prod
+
+# 2. イメージの確認
+docker images | grep watchme-web
+
+# 3. 手動で起動してエラーログ確認
+docker run --rm -it \
+  --env-file .env \
+  -p 3001:3001 \
+  754724220380.dkr.ecr.ap-southeast-2.amazonaws.com/watchme-web:latest
+```
+
+#### 環境変数が反映されない
+```bash
+# .envファイルの確認
+cat ~/watchme-docker/.env
+
+# docker-compose.prod.ymlの環境変数セクション確認
+grep -A 10 "environment:" docker-compose.prod.yml
+
+# コンテナ内の環境変数確認
+docker exec watchme-web-prod env | grep VITE
+```
 
 ### よくある問題
 

@@ -493,7 +493,10 @@ app.get('/api/proxy/opensmile-summary-supabase/:deviceId/:date', asyncHandler(as
 
 // 注意: EC2からの手動データ取得エンドポイントは削除されました。現在はSupabaseのみを使用しています。
 
-
+// ===== ヘルスチェックエンドポイント =====
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
 
 // ===== ユーザー管理API =====
 
