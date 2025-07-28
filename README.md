@@ -799,14 +799,6 @@ watchme_v8/
 └── 📜 README.md               # プロジェクト説明
 ```
 
-## 👥 デフォルトアカウント
-
-システムには以下のテストアカウントが設定済みです：
-
-- **佐藤由紀子** (`user123`) - マスターアカウント
-- **佐藤あやか** (`user456`) - 通常アカウント  
-- **佐藤みなと** (`user789`) - 通常アカウント
-
 ## 🔧 開発・カスタマイズ
 
 ### 🛠️ 開発環境セットアップ
@@ -826,6 +818,31 @@ npm install
 - **テーマカラー**: `tailwind.config.js`
 - **データ形式**: `src/services/staticFileService.js`のモックデータ
 - **API設定**: `server.cjs`のEC2_CONFIG
+
+## Git 運用ルール（ブランチベース開発フロー）
+
+このプロジェクトでは、**ブランチベースの開発フロー**を採用しています。  
+main ブランチで直接開発せず、以下のルールに従って作業を進めてください。
+
+---
+
+### 🔹 運用ルール概要
+
+1. `main` ブランチは常に安定した状態を保ちます（リリース可能な状態）。
+2. 開発作業はすべて **`feature/xxx` ブランチ** で行ってください。
+3. 作業が完了したら、GitHub上で Pull Request（PR）を作成し、差分を確認した上で `main` にマージしてください。
+4. **1人開発の場合でも、必ずPRを経由して `main` にマージしてください**（レビューは不要、自分で確認＆マージOK）。
+
+---
+
+### 🔧 ブランチ運用の手順
+
+#### 1. `main` を最新化して作業ブランチを作成
+```bash
+git checkout main
+git pull origin main
+git checkout -b feature/機能名
+
 
 ## ⚙️ Supabase Storage設定
 
@@ -1091,20 +1108,6 @@ create table vibe_whisper_summary (
 - データ表示ロジックはそのまま維持
 
 
-## 🤝 コントリビューション
-
-1. このリポジトリをフォーク
-2. 機能ブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add some amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
-
----
-
-**WatchMe v8** - 心理分析ダッシュボードシステム
-
----
-
 ## 🔐 認証・セキュリティシステム
 
 ### ✅ Supabase認証統合完了
@@ -1170,14 +1173,3 @@ return <Dashboard />;
 
 このプロジェクトはMITライセンスの下で公開されています。
 
-## 🤝 コントリビューション
-
-1. このリポジトリをフォーク
-2. 機能ブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add some amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
-
----
-
-**WatchMe v8** - 心理分析ダッシュボードシステム
