@@ -32,3 +32,6 @@ dist-ssr
 
 # データファイル（開発時のみ）
 data_accounts/
+
+# PID files
+*.pid

@@ -24,6 +24,18 @@ if [ ! -f ".env" ]; then
     echo "  nano .env"
 fi
 
+# watchme-networkの確認（インフラストラクチャ管理体制）
+echo "🌐 watchme-networkの確認中..."
+if ! docker network ls | grep -q "watchme-network"; then
+    echo "⚠️  watchme-networkが存在しません"
+    echo "インフラストラクチャを起動してください:"
+    echo "  cd /home/ubuntu/watchme-server-configs"
+    echo "  docker-compose -f docker-compose.infra.yml up -d"
+    exit 1
+else
+    echo "✅ watchme-networkが確認されました"
+fi
+
 # ECRから最新イメージをプル
 echo "📦 ECRから最新イメージをプル中..."
 aws ecr get-login-password --region $AWS_REGION | \
